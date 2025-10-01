@@ -7,24 +7,29 @@ let connecting = null;
 let tempLine = null;
 
 // ------------------- Функции для имен -------------------
-function toModelName(name){
-    name = name.replace(/[^a-zA-Z0-9\s_]/g,"").trim();
-    const parts=name.split(/[\s_]+/);
-    const camel=parts.map(p=>p.charAt(0).toUpperCase()+p.slice(1).toLowerCase()).join("");
+function toModelName(name) {
+    name = name.replace(/[^a-zA-Z0-9\s_]/g, "").trim();
+    const parts = name.split(/[\s_]+/);
+    const camel = parts.map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join("");
     return camel || "Model";
 }
-function isUniqueName(name,currentBlock=null){
-    const allTitles=Array.from(document.querySelectorAll(".block .title"))
-        .filter(t=>t!==currentBlock)
-        .map(t=>t.innerText.trim());
+
+function isUniqueName(name, currentBlock = null) {
+    const allTitles = Array.from(document.querySelectorAll(".block .title"))
+        .filter(t => t !== currentBlock)
+        .map(t => t.innerText.trim());
     return !allTitles.includes(name.trim());
 }
-function getUniqueDefaultName(base="Model") {
+
+function getUniqueDefaultName(base = "Model") {
     base = toModelName(base);
     let name = base, suffix = 1;
-    while(!isUniqueName(name)) { name = base + '_' + suffix++; }
+    while (!isUniqueName(name)) {
+        name = base + '_' + suffix++;
+    }
     return name;
 }
+
 // ------------------- Редактирование заголовка -------------------
 function enableEditing(titleEl) {
     const currentText = titleEl.innerText;
@@ -35,12 +40,17 @@ function enableEditing(titleEl) {
     titleEl.replaceWith(input);
     input.focus();
     input.addEventListener("blur", () => finishEditing(input));
-    input.addEventListener("keydown", (e) => { if (e.key==="Enter") finishEditing(input); });
+    input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") finishEditing(input);
+    });
 }
+
 function finishEditing(input) {
-    let newName=toModelName(input.value);
-    let suffix=1, baseName=newName;
-    while(!isUniqueName(newName,input)) { newName=`${baseName}${suffix++}`; }
+    let newName = toModelName(input.value);
+    let suffix = 1, baseName = newName;
+    while (!isUniqueName(newName, input)) {
+        newName = `${baseName}${suffix++}`;
+    }
     const newTitle = document.createElement("div");
     newTitle.className = "title";
     newTitle.innerText = newName;
@@ -51,12 +61,12 @@ function finishEditing(input) {
 }
 
 // ------------------- Создание блока -------------------
-function createBlock(data=null){
+function createBlock(data = null) {
     blockCounter++;
     const block = document.createElement("div");
-    block.className="block";
-    block.style.top = (data?.top || 50)+"px";
-    block.style.left = (data?.left || 50)+"px";
+    block.className = "block";
+    block.style.top = (data?.top || 50) + "px";
+    block.style.left = (data?.left || 50) + "px";
     const uniqueName = getUniqueDefaultName("Model");
     block.innerHTML = `
       <div class="block-header">
@@ -64,8 +74,8 @@ function createBlock(data=null){
         <span class="delete-block">×</span>
       </div>
       <ul class="fields">
-        ${(data?.fields || ["id INT","name VARCHAR"]).map(f=>{
-        const [name,type]=f.split(" ");
+        ${(data?.fields || ["id INT", "name VARCHAR"]).map(f => {
+        const [name, type] = f.split(" ");
         return `<li data-field-name="${name}"><span>${name}</span><span>${type}</span></li>`;
     }).join("")}
       </ul>
@@ -75,22 +85,29 @@ function createBlock(data=null){
     workspace.appendChild(block);
 
     let title = block.querySelector(".title");
-    title.title="Для редактирования имени сделайте двойной клик";
-    block.querySelector(".delete-block").onclick=()=>{ block.remove(); saveState(); };
-    block.querySelector(".add-field").onclick=()=>{
+    title.title = "Для редактирования имени сделайте двойной клик";
+    block.querySelector(".delete-block").onclick = () => {
+        block.remove();
+        saveState();
+    };
+    block.querySelector(".add-field").onclick = () => {
         const li = document.createElement("li");
-        li.innerHTML="<span>new_field</span><span>INT</span>";
+        li.innerHTML = "<span>new_field</span><span>INT</span>";
         block.querySelector(".fields").appendChild(li);
         attachFieldEvents(li);
         saveState();
     };
-    title.parentElement.ondblclick = ()=>enableEditing(title);
+    title.parentElement.ondblclick = () => enableEditing(title);
 
     // ------------------- Перетаскивание блока -------------------
     let header = block.querySelector(".block-header");
-    header.onmousedown = e=>{
-        if (e.shiftKey) { startFieldConnection(block,e); return; } // Shift для соединения полей
-        startDragging(block,e);
+
+    header.onmousedown = e => {
+        if (e.shiftKey) {
+            startFieldConnection(block, e); // Shift для соединения полей
+        } else {
+            startDragging(block, e);
+        }
     };
 
     [...block.querySelectorAll("li")].forEach(attachFieldEvents);
@@ -99,106 +116,115 @@ function createBlock(data=null){
 }
 
 // ------------------- Перетаскивание -------------------
-function startDragging(block,e){
+function startDragging(block, e) {
     const startX = e.clientX, startY = e.clientY;
     const startLeft = block.offsetLeft, startTop = block.offsetTop;
-    function onMouseMove(ev){
-        let newLeft = Math.max(startLeft + (ev.clientX - startX),0);
-        let newTop = Math.max(startTop + (ev.clientY - startY),0);
-        block.style.left=newLeft+"px";
-        block.style.top=newTop+"px";
+
+    function onMouseMove(ev) {
+        let newLeft = Math.max(startLeft + (ev.clientX - startX), 0);
+        let newTop = Math.max(startTop + (ev.clientY - startY), 0);
+        block.style.left = newLeft + "px";
+        block.style.top = newTop + "px";
         updateAllConnections();
     }
+
     document.addEventListener("mousemove", onMouseMove);
-    document.onmouseup = ()=>{
+    document.onmouseup = () => {
         document.removeEventListener("mousemove", onMouseMove);
-        document.onmouseup=null;
+        document.onmouseup = null;
         saveState();
     };
 }
 
 // ------------------- События полей для соединения -------------------
-function attachFieldEvents(li){
-    li.onmousedown = e=>{
-        if(e.shiftKey){ startFieldConnection(li,e); e.preventDefault(); }
+function attachFieldEvents(li) {
+    li.onmousedown = e => {
+        if (e.shiftKey) {
+            startFieldConnection(li, e);
+            e.preventDefault();
+        }
     };
 }
 
 // ------------------- Начало соединения поля -------------------
-function startFieldConnection(li,e){
+function startFieldConnection(li, e) {
     connecting = li;
-    tempLine = document.createElementNS("http://www.w3.org/2000/svg","path");
-    tempLine.setAttribute("stroke","gray");
-    tempLine.setAttribute("stroke-width","2");
-    tempLine.setAttribute("fill","none");
-    tempLine.setAttribute("stroke-dasharray","5,5");
+    tempLine = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    tempLine.setAttribute("stroke", "gray");
+    tempLine.setAttribute("stroke-width", "1");
+    tempLine.setAttribute("fill", "none");
+    tempLine.setAttribute("stroke-dasharray", "5,5");
     svgContainer.appendChild(tempLine);
-    document.addEventListener("mousemove", onTempLineMoveField);
-    document.addEventListener("mouseup", onTempLineEndField);
+    document.addEventListener("mousemove", onTempLineMoveField); // рисуем временную линию
+    document.addEventListener("mouseup", onTempLineEndField);    // кнопка отпущена - фиксируем результат
 }
 
 // ------------------- Временная линия -------------------
-function onTempLineMoveField(e){
-    if(!connecting) return;
-    const a=connecting.getBoundingClientRect();
-    const ws=workspace.getBoundingClientRect();
-    const x1=a.right - ws.left;
-    const y1=a.top + a.height/2 - ws.top;
-    const x2=e.clientX - ws.left;
-    const y2=e.clientY - ws.top;
-    const midX=(x1+x2)/2;
+function onTempLineMoveField(e) {
+    if (!connecting) return;
+    const a = connecting.getBoundingClientRect();
+    const ws = workspace.getBoundingClientRect();
+    const x1 = a.right - ws.left;
+    const y1 = a.top + a.height / 2 - ws.top;
+    const x2 = e.clientX - ws.left;
+    const y2 = e.clientY - ws.top;
+    const midX = (x1 + x2) / 2;
     tempLine.setAttribute("d", `M${x1},${y1} L${midX},${y1} L${midX},${y2} L${x2},${y2}`);
 }
 
 // ------------------- Завершение соединения -------------------
-function onTempLineEndField(e){
-    if(!connecting) return;
-    const target = document.elementFromPoint(e.clientX,e.clientY);
+function onTempLineEndField(e) {
+    if (!connecting) return;
+    const target = document.elementFromPoint(e.clientX, e.clientY);
     const targetLi = target.closest("li");
-    if(targetLi && targetLi!==connecting){ connectFields(connecting,targetLi); }
-    tempLine.remove(); tempLine=null; connecting=null;
+    if (targetLi && targetLi !== connecting) {
+        connectFields(connecting, targetLi);
+    }
+    tempLine.remove();
+    tempLine = null;
+    connecting = null;
     document.removeEventListener("mousemove", onTempLineMoveField);
     document.removeEventListener("mouseup", onTempLineEndField);
 }
 
 // ------------------- Создание постоянной линии -------------------
-function connectFields(fromLi,toLi){
-    const path=document.createElementNS("http://www.w3.org/2000/svg","path");
-    path.setAttribute("stroke","gray");
-    path.setAttribute("stroke-width","1");
-    path.setAttribute("fill","none");
+function connectFields(fromLi, toLi) {
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("stroke", "gray");
+    path.setAttribute("stroke-width", "1");
+    path.setAttribute("fill", "none");
     svgContainer.appendChild(path);
-    const rel={from:fromLi,to:toLi,path};
+    const rel = {from: fromLi, to: toLi, path};
     connections.push(rel);
     updateConnection(rel);
 }
 
 // ------------------- Обновление линии -------------------
-function updateConnection(rel){
-    const a=rel.from.getBoundingClientRect();
-    const b=rel.to.getBoundingClientRect();
-    const ws=workspace.getBoundingClientRect();
+function updateConnection(rel) {
+    const a = rel.from.getBoundingClientRect();
+    const b = rel.to.getBoundingClientRect();
+    const ws = workspace.getBoundingClientRect();
 
-    const x1=a.right - ws.left;
-    const y1=a.top + a.height/2 - ws.top;
-    const x2=b.left - ws.left;
-    const y2=b.top + b.height/2 - ws.top;
+    const x1 = a.right - ws.left;
+    const y1 = a.top + a.height / 2 - ws.top;
+    const x2 = b.left - ws.left;
+    const y2 = b.top + b.height / 2 - ws.top;
 
-    const verticalOffset = Math.abs(y2-y1)/2;
-    const points=[];
+    const verticalOffset = Math.abs(y2 - y1) / 2;
+    const points = [];
 
     points.push([x1, y1]);
 
-    if(x2 > x1){
+    if (x2 > x1) {
         // цель справа — прямой горизонтальный сегмент
-        const midX = (x1 + x2)/2;
+        const midX = (x1 + x2) / 2;
         points.push([midX, y1]);
         points.push([midX, y2]);
     } else {
         // цель слева — ступенька
         const midX1 = x1 + 20;
         points.push([midX1, y1]);
-        const midY = y1<y2 ? y1+verticalOffset : y1-verticalOffset;
+        const midY = y1 < y2 ? y1 + verticalOffset : y1 - verticalOffset;
         points.push([midX1, midY]);
         const midX2 = x2 - 20;
         points.push([midX2, midY]);
@@ -206,27 +232,30 @@ function updateConnection(rel){
     }
 
     points.push([x2, y2]);
-    const d = points.map((p,i)=>(i===0?"M":"L")+p[0]+","+p[1]).join(" ");
-    rel.path.setAttribute("d",d);
-    saveConnections();
+    const d = points.map((p, i) => (i === 0 ? "M" : "L") + p[0] + "," + p[1]).join(" ");
+    rel.path.setAttribute("d", d);
+    //saveConnections();
 }
 
 
 function createConnection(fromField, toField) {
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute("stroke", "#333");
+    path.setAttribute("stroke", "gray");
     path.setAttribute("fill", "none");
-    path.setAttribute("stroke-width", "2");
-    workspace.appendChild(path);
+    path.setAttribute("stroke-width", "1");
+    svgContainer.appendChild(path);
 
-    const rel = { from: fromField, to: toField, path };
+    const rel = {from: fromField, to: toField, path};
+
     connections.push(rel);
 
     updateConnection(rel);
-
+return;
     // обновляем при движении блоков
     const updateAll = () => connections.forEach(c => updateConnection(c));
+
     fromField.closest(".block").querySelector(".block-header").onmousedown = e => {
+
         const startX = e.clientX, startY = e.clientY;
         const block = fromField.closest(".block");
         const startLeft = block.offsetLeft;
@@ -239,24 +268,29 @@ function createConnection(fromField, toField) {
         }
 
         document.addEventListener("mousemove", onMouseMove);
+
         document.onmouseup = () => {
             document.removeEventListener("mousemove", onMouseMove);
             document.onmouseup = null;
         };
+
     };
 
-    saveConnections(); // сохраняем связи
+    //saveConnections(); // сохраняем связи
 }
 
 
 // ------------------- Обновление всех линий -------------------
-function updateAllConnections(){ connections.forEach(updateConnection); }
+function updateAllConnections() {
+    connections.forEach(updateConnection);
+}
 
 function loadConnections() {
     const data = localStorage.getItem("designerConnections");
     if (!data) return;
 
     const saved = JSON.parse(data);
+
     saved.forEach(rel => {
         const fromBlock = [...workspace.querySelectorAll(".block")].find(b =>
             b.querySelector(".title").textContent === rel.fromBlock
@@ -288,7 +322,7 @@ function saveConnections() {
 }
 
 // ------------------- Кнопка добавить -------------------
-addBtn.onclick = ()=>{
+addBtn.onclick = () => {
     createBlock();
     saveState();
 };

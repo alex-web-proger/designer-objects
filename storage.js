@@ -17,6 +17,10 @@ function saveState(){
 
 function loadState(){
     const data = localStorage.getItem("designerState");
-    if(data){ JSON.parse(data).forEach(b=>createBlock(b)); }
+
+    if(data){
+        JSON.parse(data).forEach(b=>createBlock(b));
+    }
+
     loadConnections();
 }

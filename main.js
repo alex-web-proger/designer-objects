@@ -85,7 +85,7 @@ function createBlock(data = null) {
     workspace.appendChild(block);
 
     let title = block.querySelector(".title");
-    title.title = "Для редактирования имени сделайте двойной клик";
+    title.title = "Для редактирования имени - двойной клик";
     block.querySelector(".delete-block").onclick = () => {
         block.remove();
         saveState();
@@ -188,15 +188,43 @@ function onTempLineEndField(e) {
 }
 
 // ------------------- Создание постоянной линии -------------------
-function connectFields(fromLi, toLi) {
+function connectFields(fromLi, toLi,  type="one-to-many") {
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute("stroke", "gray");
     path.setAttribute("stroke-width", "1");
     path.setAttribute("fill", "none");
+    //path.setAttribute("marker-start", "url(#one)");
+    path.setAttribute("marker-end", "url(#many)");
     svgContainer.appendChild(path);
-    const rel = {from: fromLi, to: toLi, path};
+
+    // хит-зона — невидимая линия для удобного наведения
+    const hitPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    hitPath.setAttribute("stroke", "transparent");
+    hitPath.setAttribute("stroke-width", "8"); // удобная зона
+    hitPath.setAttribute("fill", "none");
+    hitPath.setAttribute("pointer-events", "stroke"); // чтобы ловила события
+    svgContainer.appendChild(hitPath);
+
+    // удаление связи по клику
+    path.addEventListener("click", () => {
+        if (confirm("Удалить связь?")) {
+            const idx = connections.findIndex(c => c.path === path);
+            if (idx !== -1) {
+                connections[idx].path.remove();         // убрать из DOM
+                connections.splice(idx, 1);  // убрать из массива
+                saveConnections();                      // обновить хранилище
+            }
+        }
+    });
+
+    hitPath.addEventListener("mouseenter", () => path.setAttribute("stroke", "#f00"));
+    hitPath.addEventListener("mouseleave", () => path.setAttribute("stroke", "#000"));
+
+    const rel = {from: fromLi, to: toLi, path, hitPath};
     connections.push(rel);
+
     updateConnection(rel);
+
     saveConnections();
 }
 
@@ -235,64 +263,8 @@ function updateConnection(rel) {
     points.push([x2, y2]);
     const d = points.map((p, i) => (i === 0 ? "M" : "L") + p[0] + "," + p[1]).join(" ");
     rel.path.setAttribute("d", d);
+    rel.hitPath.setAttribute("d", d);
 }
-
-
-function createConnection(fromField, toField) {
-    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute("stroke", "gray");
-    path.setAttribute("fill", "none");
-    path.setAttribute("stroke-width", "1");
-
-    // удаление связи по клику
-    path.addEventListener("click", () => {
-        if (confirm("Удалить связь?")) {
-            const idx = connections.findIndex(c => c.path === path);
-            if (idx !== -1) {
-                connections[idx].path.remove();        // убрать из DOM
-                connections.splice(idx, 1);  // убрать из массива
-                saveConnections();                     // обновить хранилище
-            }
-        }
-    });
-
-    svgContainer.appendChild(path);
-
-    const rel = {from: fromField, to: toField, path};
-
-    connections.push(rel);
-
-    updateConnection(rel);
-
-    return;
-    // обновляем при движении блоков
-    const updateAll = () => connections.forEach(c => updateConnection(c));
-
-    fromField.closest(".block").querySelector(".block-header").onmousedown = e => {
-
-        const startX = e.clientX, startY = e.clientY;
-        const block = fromField.closest(".block");
-        const startLeft = block.offsetLeft;
-        const startTop = block.offsetTop;
-
-        function onMouseMove(ev) {
-            block.style.left = startLeft + (ev.clientX - startX) + "px";
-            block.style.top = startTop + (ev.clientY - startY) + "px";
-            updateAll();
-        }
-
-        document.addEventListener("mousemove", onMouseMove);
-
-        document.onmouseup = () => {
-            document.removeEventListener("mousemove", onMouseMove);
-            document.onmouseup = null;
-        };
-
-    };
-
-    //saveConnections(); // сохраняем связи
-}
-
 
 // ------------------- Обновление всех линий -------------------
 function updateAllConnections() {
@@ -316,9 +288,10 @@ function loadConnections() {
 
         const fromField = [...fromBlock.querySelectorAll("li")].find(li => li.dataset.fieldName === rel.fromField);
         const toField = [...toBlock.querySelectorAll("li")].find(li => li.dataset.fieldName === rel.toField);
+
         if (!fromField || !toField) return;
 
-        createConnection(fromField, toField);
+        connectFields(fromField, toField);
     });
 }
 

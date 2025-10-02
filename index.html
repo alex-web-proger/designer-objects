@@ -13,22 +13,25 @@
     <svg id="connections">
         <defs>
             <!-- одиночная палочка (1) -->
-            <marker id="one" markerWidth="6" markerHeight="20" refX="1" refY="10" orient="auto"
-                    markerUnits="strokeWidth">
+            <marker id="one" markerWidth="6" markerHeight="20" refX="1" refY="10" orient="auto" markerUnits="strokeWidth">
                 <path d="M1,0 L1,20" stroke="black" stroke-width="1"/>
             </marker>
 
             <!-- воронья лапка (N) -->
-            <marker id="many"
-                    markerWidth="14" markerHeight="14"
-                    refX="13" refY="7"
-                    orient="auto" markerUnits="strokeWidth">
-                <path d="M13,0 L1,7 L13,14" stroke="gray" stroke-width="1" fill="none"/>
+            <marker id="many" class="marker-relation" markerWidth="14" markerHeight="14" refX="13" refY="7" orient="auto" markerUnits="strokeWidth">
+                <path d="M13,0 L1,7 L13,14" stroke="currentColor" stroke-width="1" fill="none"/>
             </marker>
+
+            <marker id="many-start" class="marker-relation" markerWidth="14" markerHeight="14" refX="0" refY="7" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L13,7 L0,13" stroke="gray" stroke-width="1" fill="none"/>
+            </marker>
+
 
         </defs>
     </svg>
 </div>
+
+
 
 <script src="storage.js"></script>
 <script src="name_object.js"></script>

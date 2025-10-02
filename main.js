@@ -193,7 +193,7 @@ function connectFields(fromLi, toLi, type = "one-to-many") {
     path.setAttribute("stroke", "gray");
     path.setAttribute("stroke-width", "1");
     path.setAttribute("fill", "none");
-    //path.setAttribute("marker-start", "url(#one)");
+    path.setAttribute("marker-start", "url(#many-start)");
     path.setAttribute("marker-end", "url(#many)");
     svgContainer.appendChild(path);
 
@@ -218,12 +218,14 @@ function connectFields(fromLi, toLi, type = "one-to-many") {
     });
 
     hitPath.addEventListener("mouseenter", () => {
-        path.setAttribute("stroke", "#666");
-        path.setAttribute("stroke-width", "2")
+        path.setAttribute("stroke", "red");
+        path.setAttribute("stroke-width", "2");
+        document.querySelector('.marker-relation path').setAttribute('stroke', 'red');
     });
     hitPath.addEventListener("mouseleave", () => {
         path.setAttribute("stroke", "gray");
-        path.setAttribute("stroke-width", "1")
+        path.setAttribute("stroke-width", "1");
+        document.querySelector('.marker-relation path').setAttribute('stroke', 'gray');
     });
 
     const rel = {from: fromLi, to: toLi, path, hitPath};
@@ -240,7 +242,7 @@ function updateConnection(rel) {
     const b = rel.to.getBoundingClientRect();
     const ws = workspace.getBoundingClientRect();
 
-    const x1 = a.right - ws.left;
+    const x1 = a.right - ws.left + 0;
     const y1 = a.top + a.height / 2 - ws.top;
     const x2 = b.left - ws.left;
     const y2 = b.top + b.height / 2 - ws.top;

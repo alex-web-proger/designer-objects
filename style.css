@@ -87,3 +87,20 @@ svg {
     -moz-user-select:none;
     -ms-user-select:none;
 }
+path {
+    cursor: pointer;
+    pointer-events: stroke;
+}
+path {
+    stroke: gray;
+    stroke-width: 1;
+    fill: none;
+    cursor: pointer;
+    pointer-events: stroke;
+    transition: stroke 0.2s, stroke-width 0.2s;
+}
+
+path:hover {
+    stroke: #666;
+    stroke-width: 3;
+}

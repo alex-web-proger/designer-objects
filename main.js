@@ -197,6 +197,7 @@ function connectFields(fromLi, toLi) {
     const rel = {from: fromLi, to: toLi, path};
     connections.push(rel);
     updateConnection(rel);
+    saveConnections();
 }
 
 // ------------------- Обновление линии -------------------
@@ -234,7 +235,6 @@ function updateConnection(rel) {
     points.push([x2, y2]);
     const d = points.map((p, i) => (i === 0 ? "M" : "L") + p[0] + "," + p[1]).join(" ");
     rel.path.setAttribute("d", d);
-    //saveConnections();
 }
 
 
@@ -243,6 +243,19 @@ function createConnection(fromField, toField) {
     path.setAttribute("stroke", "gray");
     path.setAttribute("fill", "none");
     path.setAttribute("stroke-width", "1");
+
+    // удаление связи по клику
+    path.addEventListener("click", () => {
+        if (confirm("Удалить связь?")) {
+            const idx = connections.findIndex(c => c.path === path);
+            if (idx !== -1) {
+                connections[idx].path.remove();        // убрать из DOM
+                connections.splice(idx, 1);  // убрать из массива
+                saveConnections();                     // обновить хранилище
+            }
+        }
+    });
+
     svgContainer.appendChild(path);
 
     const rel = {from: fromField, to: toField, path};
@@ -250,7 +263,8 @@ function createConnection(fromField, toField) {
     connections.push(rel);
 
     updateConnection(rel);
-return;
+
+    return;
     // обновляем при движении блоков
     const updateAll = () => connections.forEach(c => updateConnection(c));
 

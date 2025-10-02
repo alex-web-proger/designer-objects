@@ -188,7 +188,7 @@ function onTempLineEndField(e) {
 }
 
 // ------------------- Создание постоянной линии -------------------
-function connectFields(fromLi, toLi,  type="one-to-many") {
+function connectFields(fromLi, toLi, type = "one-to-many") {
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute("stroke", "gray");
     path.setAttribute("stroke-width", "1");
@@ -217,8 +217,14 @@ function connectFields(fromLi, toLi,  type="one-to-many") {
         }
     });
 
-    hitPath.addEventListener("mouseenter", () => path.setAttribute("stroke", "#f00"));
-    hitPath.addEventListener("mouseleave", () => path.setAttribute("stroke", "#000"));
+    hitPath.addEventListener("mouseenter", () => {
+        path.setAttribute("stroke", "#666");
+        path.setAttribute("stroke-width", "2")
+    });
+    hitPath.addEventListener("mouseleave", () => {
+        path.setAttribute("stroke", "gray");
+        path.setAttribute("stroke-width", "1")
+    });
 
     const rel = {from: fromLi, to: toLi, path, hitPath};
     connections.push(rel);

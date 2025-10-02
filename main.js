@@ -218,14 +218,12 @@ function connectFields(fromLi, toLi, type = "one-to-many") {
     });
 
     hitPath.addEventListener("mouseenter", () => {
-        path.setAttribute("stroke", "red");
-        path.setAttribute("stroke-width", "2");
-        document.querySelector('.marker-relation path').setAttribute('stroke', 'red');
+        path.setAttribute("stroke", "#666");
+        path.setAttribute("stroke-width", "2")
     });
     hitPath.addEventListener("mouseleave", () => {
         path.setAttribute("stroke", "gray");
-        path.setAttribute("stroke-width", "1");
-        document.querySelector('.marker-relation path').setAttribute('stroke', 'gray');
+        path.setAttribute("stroke-width", "1")
     });
 
     const rel = {from: fromLi, to: toLi, path, hitPath};

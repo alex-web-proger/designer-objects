@@ -1,18 +1,127 @@
 body {
-    font-family: Arial, sans-serif;
     margin: 0;
+    font-family: sans-serif;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
 }
 .toolbar {
     padding: 10px;
     background: #ddd;
     border-bottom: 1px solid #aaa;
 }
+/* Основная рабочая зона */
+#main {
+    flex: 1;
+    display: flex;
+    /*overflow: hidden;*/
+    height: calc(100% - 40px);
+}
+
+#placeholder { position:absolute; top:0; left:0; }
+
+#statusbar {
+    background: #f9f9f9;
+    border-top: 1px solid #ccc;
+    padding: 4px 10px;
+    font-size: 14px;
+    display: flex;
+    justify-content: space-between;
+}
+
+#inspector {
+    width: 250px;
+    background: #fafafa;
+    border-left: 1px solid #ccc;
+    padding: 10px;
+    /*overflow: auto;*/
+    box-sizing:border-box;
+}
+
+#splitter {
+    width: 3px;
+    cursor: ew-resize;
+    background: #ccc;
+}
+
+/* Панель инструментов */
+#toolbar {
+    background: #dfdfdf;
+    border-bottom: 1px solid #aaa;
+    padding: 5px 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#toolbar .group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+#toolbar .separator {
+    width: 1px;
+    background: #aaa;
+    height: 24px;
+    margin: 0 8px;
+}
+
+#toolbar button {
+    border: none;
+    background: #fff;
+    padding: 5px 8px;
+    cursor: pointer;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+#toolbar button:hover {
+    background: #eeeeee;
+}
+
+#toolbar button span {
+    margin-left: 4px;
+    font-size: 14px;
+}
+
+#toolbar button i {
+    font-size: 18px;
+    color: rgba(0,0,0,0.7); /* общий светлый тон */
+    transition: color 0.2s;
+}
+
+#toolbar button:hover i {
+    color: rgba(0,0,0,1); /* при наведении темнее */
+}
+
+/* Цвета для отдельных кнопок */
+#saveProject i { color: blue !important; }
+#loadProject i { color: orange !important; }
+#deleteProject i { color: tomato !important; }
+
+button.disabled i {
+    color: rgba(0,0,0,0.3) !important; /* блеклый цвет */
+    cursor: default !important;          /* курсор не интерактивный */
+    pointer-events: none !important;     /* полностью отключает клики */
+}
+
 .workspace {
     position: relative;
     width: 100%;
     height: calc(100vh - 42px);
     background: #f5f5f5; overflow: auto;
 }
+#workspace {
+    flex:1;
+
+    border-right: 1px solid #ccc;
+    overflow: auto;
+}
+
 .block {
     position: absolute;
     width: 240px;

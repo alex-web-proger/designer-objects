@@ -187,6 +187,7 @@ function onTempLineEndField(e) {
     document.removeEventListener("mouseup", onTempLineEndField);
 }
 
+
 // ------------------- Создание постоянной линии -------------------
 function connectFields(fromLi, toLi, type = "one-to-many") {
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
@@ -242,8 +243,12 @@ function updateConnection(rel) {
 
     const x1 = a.right - ws.left + 0;
     const y1 = a.top + a.height / 2 - ws.top;
-    const x2 = b.left - ws.left;
+    const x2 = b.left;
     const y2 = b.top + b.height / 2 - ws.top;
+
+    document.getElementById('x1').innerHTML = x1;
+    document.getElementById('x2').innerHTML = x2;
+    document.getElementById('x3').innerHTML = workspace.scrollLeft;
 
     const verticalOffset = Math.abs(y2 - y1) / 2;
     const points = [];

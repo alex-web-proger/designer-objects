@@ -3,46 +3,125 @@
 <head>
     <meta charset="UTF-8">
     <title>Workbench Designer с полями</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+          integrity="sha512-..." crossorigin="anonymous" referrerpolicy="no-referrer"/>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="toolbar">
-    <button id="addBlock">+ Добавить таблицу</button>
-</div>
-<div class="workspace" id="workspace">
-    <svg id="connections">
-        <defs>
-            <!-- одиночная палочка (1) -->
-            <marker id="one" markerWidth="6" markerHeight="20" refX="1" refY="10" orient="auto" markerUnits="strokeWidth">
-                <path d="M1,0 L1,20" stroke="black" stroke-width="1"/>
-            </marker>
+<!-- Верхняя панель -->
+<div id="toolbar">
 
-            <!-- воронья лапка (N) -->
-            <marker id="many" class="marker-relation" markerWidth="14" markerHeight="14" refX="13" refY="7" orient="auto" markerUnits="strokeWidth">
-                <path d="M13,0 L1,7 L13,14" stroke="gray" stroke-width="1" fill="none"/>
-            </marker>
+    <!-- Работа с проектом -->
+    <div class="group">
+        <button title="Новый проект" id="newProject"><i class="far fa-file"></i></button>
+        <button title="Сохранить проект" id="saveProject"><i class="fas fa-floppy-disk"></i></button>
+        <button title="Открыть проект" id="loadProject"><i class="fas fa-folder-open"></i></button>
+        <button title="Удалить проект" id="deleteProject"><i class="fas fa-trash"></i></button>
+    </div>
 
-            <marker id="many-start" class="marker-relation" markerWidth="14" markerHeight="14" refX="0" refY="7" orient="auto" markerUnits="strokeWidth">
-                <path d="M0,0 L13,7 L0,13" stroke="gray" stroke-width="1" fill="none"/>
-            </marker>
+    <div class="separator"></div>
 
+    <!-- Undo/Redo и масштаб -->
+    <div class="group">
+        <button title="Undo" id="undo" class="disabled"><i class="fas fa-undo"></i></button>
+        <button title="Redo" id="redo"><i class="fas fa-redo"></i></button>
+        <button title="Увеличить масштаб" id="zoomIn"><i class="fas fa-magnifying-glass-plus"></i></button>
+        <button title="Уменьшить масштаб" id="zoomOut"><i class="fas fa-magnifying-glass-minus"></i></button>
+        <button title="Сброс масштаба" id="zoomReset"><i class="fas fa-magnifying-glass"></i></button>
+    </div>
 
-        </defs>
-    </svg>
-</div>
+    <div class="separator"></div>
 
-<div id="connectionModal" style="display:none; position:fixed; top:30%; left:40%; background:#fff; padding:20px; border:1px solid #ccc; border-radius:8px; box-shadow:0 0 10px rgba(0,0,0,.3)">
-    <label>Тип связи:</label>
-    <select id="relationType">
-        <option value="one-one">Один к одному</option>
-        <option value="one-many">Один ко многим</option>
-        <option value="many-many">Многие ко многим</option>
-    </select>
-    <br><br>
-    <button id="deleteConnection">Удалить</button>
-    <button id="saveConnection">Сохранить</button>
+    <!-- Добавление -->
+    <div class="group">
+        <button title="Добавить таблицу" id="addBlock"><i class="fas fa-table"></i></button>
+        <button title="Добавить связь" id="addConnection"><i class="fas fa-link"></i></button>
+    </div>
+
 </div>
 
+<!-- Центральная часть -->
+<div id="main">
+
+        <div class="workspace" id="workspace" style="position:relative; width:2000px;">
+            <div id="placeholder"></div>
+            <svg id="connections" width="2000"style="pointer-events:none;">
+                <defs>
+                    <!-- одиночная палочка (1) -->
+                    <marker id="one" markerWidth="6" markerHeight="20" refX="1" refY="10" orient="auto"
+                            markerUnits="strokeWidth">
+                        <path d="M1,0 L1,20" stroke="black" stroke-width="1"/>
+                    </marker>
+
+                    <!-- воронья лапка (N) -->
+                    <marker id="many" class="marker-relation" markerWidth="14" markerHeight="14" refX="13" refY="7"
+                            orient="auto" markerUnits="strokeWidth">
+                        <path d="M13,0 L1,7 L13,14" stroke="gray" stroke-width="1" fill="none"/>
+                    </marker>
+
+                    <marker id="many-start" class="marker-relation" markerWidth="14" markerHeight="14" refX="0" refY="7"
+                            orient="auto" markerUnits="strokeWidth">
+                        <path d="M0,0 L13,7 L0,13" stroke="gray" stroke-width="1" fill="none"/>
+                    </marker>
+                </defs>
+            </svg>
+        </div>
+
+    <div id="splitter"></div>
+
+    <div id="inspector">
+        <h3>Инспектор</h3>
+        <p>Выберите объект…</p>
+        <p>X1: <span id="x1"></span></p>
+        <p>Y1: <span id="y1"></span></p>
+        <p>X2: <span id="x2"></span></p>
+        <p>Y2: <span id="y2"></span></p>
+        <p>X3: <span id="x3"></span></p>
+        <p>Y3: <span id="y3"></span></p>
+    </div>
+
+</div>
+
+<!-- Нижняя строка -->
+<!--<div id="statusbar">-->
+<!--    <span id="projectName">Проект: безымянный</span>-->
+<!--    <span id="hint">Подсказка: ничего не выбрано</span>-->
+<!--</div>-->
+
+<script>
+    // const hint = document.getElementById("hint");
+    // document.getElementById("workspace").addEventListener("mousemove", e => {
+    //     hint.textContent = `Координаты: ${e.offsetX}, ${e.offsetY}`;
+    // });
+    //
+    // const splitter = document.getElementById('splitter');
+    // const work = document.getElementById('work-area');
+    // const inspector = document.getElementById('inspector');
+    //
+    // splitter.addEventListener('mousedown', e => {
+    //     e.preventDefault();
+    //     const startX = e.clientX;
+    //     const startWorkspaceWidth = work.offsetWidth;
+    //     const startInspectorWidth = inspector.offsetWidth;
+    //
+    //     function onMouseMove(ev) {
+    //         const dx = ev.clientX - startX;
+    //         const newWorkspaceWidth = startWorkspaceWidth + dx;
+    //         const newInspectorWidth = startInspectorWidth - dx;
+    //         if (newWorkspaceWidth < 100 || newInspectorWidth < 30) return; // минимальные размеры
+    //         work.style.flex = '0 0 ' + newWorkspaceWidth + 'px';
+    //         inspector.style.width = newInspectorWidth + 'px';
+    //     }
+    //
+    //     function onMouseUp() {
+    //         document.removeEventListener('mousemove', onMouseMove);
+    //         document.removeEventListener('mouseup', onMouseUp);
+    //     }
+    //
+    //     document.addEventListener('mousemove', onMouseMove);
+    //     document.addEventListener('mouseup', onMouseUp);
+    // });
+</script>
 
 <script src="storage.js"></script>
 <script src="name_object.js"></script>

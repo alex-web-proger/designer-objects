@@ -250,18 +250,18 @@ function updateConnection(rel) {
 
     points.push([x1, y1]);
 
-    if (x2 > x1) {
+    if (x2 > x1 && ((x2 - x1) > 35)) {
         // цель справа — прямой горизонтальный сегмент
         const midX = (x1 + x2) / 2;
         points.push([midX, y1]);
         points.push([midX, y2]);
     } else {
         // цель слева — ступенька
-        const midX1 = x1 + 20;
+        const midX1 = x1 + 30;
         points.push([midX1, y1]);
         const midY = y1 < y2 ? y1 + verticalOffset : y1 - verticalOffset;
         points.push([midX1, midY]);
-        const midX2 = x2 - 20;
+        const midX2 = x2 - 30;
         points.push([midX2, midY]);
         points.push([midX2, y2]);
     }

@@ -31,6 +31,19 @@
     </svg>
 </div>
 
+<div id="connectionModal" style="display:none; position:fixed; top:30%; left:40%; background:#fff; padding:20px; border:1px solid #ccc; border-radius:8px; box-shadow:0 0 10px rgba(0,0,0,.3)">
+    <label>Тип связи:</label>
+    <select id="relationType">
+        <option value="one-one">Один к одному</option>
+        <option value="one-many">Один ко многим</option>
+        <option value="many-many">Многие ко многим</option>
+    </select>
+    <br><br>
+    <button id="deleteConnection">Удалить</button>
+    <button id="saveConnection">Сохранить</button>
+</div>
+
+
 <script src="storage.js"></script>
 <script src="name_object.js"></script>
 <script src="main.js"></script>

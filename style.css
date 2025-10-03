@@ -97,7 +97,7 @@ path {
     fill: none;
     /*cursor: pointer;*/
     /*pointer-events: stroke;*/
-    transition: stroke 0.2s, stroke-width 0.2s;
+    transition: stroke 0.3s, stroke-width 0.3s;
 }
 
 path:hover {

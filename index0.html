@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Диаграмма с авторасширением</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+          integrity="sha512-..." crossorigin="anonymous" referrerpolicy="no-referrer"/>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* Панель инструментов */
+        #toolbar {
+            background: #dfdfdf;
+            border-bottom: 1px solid #aaa;
+            padding: 5px 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #toolbar .group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        #toolbar .separator {
+            width: 1px;
+            background: #aaa;
+            height: 24px;
+            margin: 0 8px;
+        }
+
+        #toolbar button {
+            border: none;
+            background: #fff;
+            padding: 5px 8px;
+            cursor: pointer;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        #toolbar button:hover {
+            background: #eeeeee;
+        }
+
+        #toolbar button span {
+            margin-left: 4px;
+            font-size: 14px;
+        }
+
+        #toolbar button i {
+            font-size: 18px;
+            color: rgba(0, 0, 0, 0.7); /* общий светлый тон */
+            transition: color 0.2s;
+        }
+
+        #toolbar button:hover i {
+            color: rgba(0, 0, 0, 1); /* при наведении темнее */
+        }
+
+        /* Цвета для отдельных кнопок */
+        #saveProject i {
+            color: blue !important;
+        }
+
+        #loadProject i {
+            color: orange !important;
+        }
+
+        #deleteProject i {
+            color: tomato !important;
+        }
+
+        button.disabled i {
+            color: rgba(0, 0, 0, 0.3) !important; /* блеклый цвет */
+            cursor: default !important; /* курсор не интерактивный */
+            pointer-events: none !important; /* полностью отключает клики */
+        }
+
+        /**/
+
+        #main {
+            flex: 1;
+            display: flex;
+            height: calc(100% - 40px);
+        }
+
+        #workspace {
+            width: 800px;
+            height: 500px;
+            overflow: scroll;
+            position: relative;
+            background: #f0f0f0;
+        }
+
+        #workspace {
+            width: 100%;
+            height: calc(100vh - 42px);
+            background: #f5f5f5;
+            flex: 1;
+            border-right: 1px solid #ccc;
+            /*overflow: auto;*/
+        }
+
+        #inspector {
+            width: 250px;
+            background: #fafafa;
+            border-left: 1px solid #ccc;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        #splitter {
+            width: 3px;
+            cursor: ew-resize;
+            background: #ccc;
+        }
+
+        #canvas {
+            position: relative;
+            width: 1000px; /* стартовая ширина */
+            height: 2000px; /* стартовая высота */
+        }
+
+        /*.block {*/
+        /*    position: absolute;*/
+        /*    width: 120px;*/
+        /*    height: 60px;*/
+        /*    background-color: #3f51b5;*/
+        /*    color: white;*/
+        /*    border-radius: 6px;*/
+        /*    text-align: center;*/
+        /*    line-height: 60px;*/
+        /*    user-select: none;*/
+        /*    cursor: grab;*/
+        /*    font-weight: bold;*/
+        /*}*/
+
+        .block {
+            position: absolute;
+            width: 240px;
+            background: white;
+            border: 1px solid #999;
+            border-radius: 2px;
+            box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .block-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #e6e6e6;
+            padding: 6px 10px;
+            font-weight: bold;
+            cursor: move;
+        }
+
+        .block-header .title {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 200px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .title-input {
+            flex: 1;
+            margin-right: 6px;
+            font-weight: bold;
+            border: 1px solid #fff;
+            padding: 1px 2px;
+            font-size: 14px;
+        }
+
+        .delete-block {
+            cursor: pointer;
+            color: red;
+        }
+
+        .fields {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .fields li {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 8px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+
+        .fields li:hover {
+            background: #f9f9f9;
+        }
+
+        .add-field {
+            display: block;
+            width: 100%;
+            padding: 5px;
+            border: none;
+            background: #e0e0e0;
+            cursor: pointer;
+        }
+
+
+        /*svg {*/
+        /*    position: absolute;*/
+        /*    top: 0;*/
+        /*    left: 0;*/
+        /*    pointer-events: none;*/
+        /*    z-index: 0;*/
+        /*}*/
+
+        svg{
+            position: absolute;
+            top:0;
+            left:0;
+            width:100%;
+            height:100%;
+            pointer-events:none;
+        }
+ 
+
+        #workspace, .block, .header, .title {
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Верхняя панель -->
+<div id="toolbar">
+
+    <!-- Работа с проектом -->
+    <div class="group">
+        <button title="Новый проект" id="newProject"><i class="far fa-file"></i></button>
+        <button title="Сохранить проект" id="saveProject"><i class="fas fa-floppy-disk"></i></button>
+        <button title="Открыть проект" id="loadProject"><i class="fas fa-folder-open"></i></button>
+        <button title="Удалить проект" id="deleteProject"><i class="fas fa-trash"></i></button>
+    </div>
+
+    <div class="separator"></div>
+
+    <!-- Undo/Redo и масштаб -->
+    <div class="group">
+        <button title="Undo" id="undo" class="disabled"><i class="fas fa-undo"></i></button>
+        <button title="Redo" id="redo"><i class="fas fa-redo"></i></button>
+        <button title="Увеличить масштаб" id="zoomIn"><i class="fas fa-magnifying-glass-plus"></i></button>
+        <button title="Уменьшить масштаб" id="zoomOut"><i class="fas fa-magnifying-glass-minus"></i></button>
+        <button title="Сброс масштаба" id="zoomReset"><i class="fas fa-magnifying-glass"></i></button>
+    </div>
+
+    <div class="separator"></div>
+
+    <!-- Добавление -->
+    <div class="group">
+        <button title="Добавить таблицу" id="addBlock"><i class="fas fa-plus"></i></button>
+        <button title="Добавить связь" id="addConnection"><i class="fas fa-link"></i></button>
+    </div>
+</div>
+
+<div id="main">
+    <div id="workspace">
+        <div id="canvas">
+            <svg id="connections">
+                <defs>
+                    <!-- воронья лапка (N) -->
+                    <marker id="many" class="marker-relation" markerWidth="14" markerHeight="14" refX="13" refY="7"
+                            orient="auto" markerUnits="strokeWidth">
+                        <path d="M13,0 L1,7 L13,14" stroke="gray" stroke-width="1" fill="none"/>
+                    </marker>
+
+                    <marker id="many-start" class="marker-relation" markerWidth="14" markerHeight="14" refX="0" refY="7"
+                            orient="auto" markerUnits="strokeWidth">
+                        <path d="M0,0 L13,7 L0,13" stroke="gray" stroke-width="1" fill="none"/>
+                    </marker>
+                </defs>
+            </svg>
+        </div>
+    </div>
+
+    <div id="splitter"></div>
+
+    <div id="inspector">
+        <h3>Инспектор</h3>
+        <p>Выберите объект…</p>
+        <p>X1: <span id="x1"></span></p>
+        <p>Y1: <span id="y1"></span></p>
+        <p>X2: <span id="x2"></span></p>
+        <p>Y2: <span id="y2"></span></p>
+        <p>X3: <span id="x3"></span></p>
+        <p>Y3: <span id="y3"></span></p>
+    </div>
+</div>
+
+<script>
+    const svgContainer = document.getElementById("connections");
+    const canvas = document.getElementById('canvas');
+    let connecting = null;
+    let tempLine = null;
+
+    // ------------------- Функции для имен -------------------
+    function toModelName(name) {
+        name = name.replace(/[^a-zA-Z0-9\s_]/g, "").trim();
+        const parts = name.split(/[\s_]+/);
+        const camel = parts.map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join("");
+        return camel || "Model";
+    }
+
+    function isUniqueName(name, currentBlock = null) {
+        const allTitles = Array.from(document.querySelectorAll(".block .title"))
+            .filter(t => t !== currentBlock)
+            .map(t => t.innerText.trim());
+        return !allTitles.includes(name.trim());
+    }
+
+    function getUniqueDefaultName(base = "Model") {
+        base = toModelName(base);
+        let name = base, suffix = 1;
+        while (!isUniqueName(name)) {
+            name = base + '_' + suffix++;
+        }
+        return name;
+    }
+
+    // ------------------- Редактирование заголовка -------------------
+    function enableEditing(titleEl) {
+        const currentText = titleEl.innerText;
+        const input = document.createElement("input");
+        input.type = "text";
+        input.value = currentText;
+        input.className = "title-input";
+        titleEl.replaceWith(input);
+        input.focus();
+        input.addEventListener("blur", () => finishEditing(input));
+        input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") finishEditing(input);
+        });
+    }
+
+    function finishEditing(input) {
+        let newName = toModelName(input.value);
+        let suffix = 1, baseName = newName;
+        while (!isUniqueName(newName, input)) {
+            newName = `${baseName}${suffix++}`;
+        }
+        const newTitle = document.createElement("div");
+        newTitle.className = "title";
+        newTitle.innerText = newName;
+        input.replaceWith(newTitle);
+        let header = newTitle.parentElement;
+        header.ondblclick = () => enableEditing(newTitle);
+        saveState();
+    }
+
+    //*******************************************************
+    //                     Создание блока                  //
+    //*******************************************************
+    function createBlock(data = null) {
+
+        const block = document.createElement("div");
+
+        block.className = "block";
+        block.style.top = (data?.top || 50) + "px";
+        block.style.left = (data?.left || 50) + "px";
+
+        const uniqueName = getUniqueDefaultName("Model");
+
+        block.innerHTML = `
+      <div class="block-header">
+        <span class="title">${data?.title || uniqueName}</span>
+        <span class="delete-block">×</span>
+      </div>
+      <ul class="fields">
+        ${(data?.fields || ["id INT", "name VARCHAR"]).map(f => {
+            const [name, type] = f.split(" ");
+            return `<li data-field-name="${name}"><span>${name}</span><span>${type}</span></li>`;
+        }).join("")}
+      </ul>
+      <button class="add-field">+ Добавить поле</button>
+    `;
+
+        workspace.appendChild(block);
+
+        block.x = block.offsetLeft;
+        block.y = block.offsetTop;
+
+        let title = block.querySelector(".title");
+
+        title.title = "Для редактирования имени - двойной клик";
+
+        block.querySelector(".delete-block").onclick = () => {
+            if (confirm("Удалить обьект?")) {
+                block.remove();
+                saveState();
+            }
+        };
+
+        // block.querySelector(".add-field").onclick = () => {
+        //     const li = document.createElement("li");
+        //     li.innerHTML = "<span>new_field</span><span>INT</span>";
+        //     block.querySelector(".fields").appendChild(li);
+        //     attachFieldEvents(li);
+        //     saveState();
+        // };
+        //
+        title.parentElement.ondblclick = () => enableEditing(title);
+
+        // ------------------- Перетаскивание блока -------------------
+        let header = block.querySelector(".block-header");
+
+        header.onmousedown = e => {
+            if (e.shiftKey) {
+                //startFieldConnection(block, e);
+            } else {
+                startDragging(block, e);
+            }
+        };
+
+        [...block.querySelectorAll("li")].forEach(attachFieldEvents);
+
+        saveState();
+    }
+
+    //*******************************************************
+    //                   Перетаскивание                    //
+    //*******************************************************
+    function startDragging(block, e) {
+
+        let startX = e.clientX;
+        let startY = e.clientY;
+
+        // Вызывается при перемещении блока
+        function onMouseMove(ev) {
+
+            const dx = ev.clientX - startX;
+            const dy = ev.clientY - startY;
+
+            block.x += dx;
+            block.y += dy;
+
+            block.x = block.x < 10 ? 10 : block.x;
+            block.y = block.y < 10 ? 10 : block.y;
+
+            //document.getElementById('x1').innerHTML = block.y;
+
+            block.style.left = block.x + "px";
+            block.style.top = block.y + "px";
+
+            startX = ev.clientX;
+            startY = ev.clientY;
+
+            updateAllConnections();
+        }
+
+        document.addEventListener("mousemove", onMouseMove);
+
+        document.onmouseup = () => {
+            document.removeEventListener("mousemove", onMouseMove);
+            document.onmouseup = null;
+            saveState();
+        };
+    }
+
+    //********************************************************
+    //             События полей для соединения             //
+    //********************************************************
+    function attachFieldEvents(li) {
+
+        li.onmousedown = e => {
+
+            if (e.shiftKey) {
+
+                startFieldConnection(li, e);
+
+                e.preventDefault();
+            }
+        };
+    }
+
+    // ------------ Начало соединения поля ------------------
+    function startFieldConnection(li, e) {
+        connecting = li;
+        tempLine = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        tempLine.setAttribute("stroke", "gray");
+        tempLine.setAttribute("stroke-width", "1");
+        tempLine.setAttribute("fill", "none");
+        tempLine.setAttribute("stroke-dasharray", "5,5");
+        svgContainer.appendChild(tempLine);
+        document.addEventListener("mousemove", onTempLineMoveField); // рисуем временную линию
+       // document.addEventListener("mouseup", onTempLineEndField);    // кнопка отпущена - фиксируем результат
+    }
+
+    // ------------------- Временная линия -------------------
+    function onTempLineMoveField(e) {
+        if (!connecting) return;
+        const a = connecting.getBoundingClientRect();
+        const cs = canvas.getBoundingClientRect();
+        const x1 = a.right - cs.left;
+        const y1 = a.top + a.height / 2 - cs.top;
+        const x2 = e.clientX - cs.left;
+        const y2 = e.clientY - cs.top;
+        const midX = (x1 + x2) / 2;
+        tempLine.setAttribute("d", `M${x1},${y1} L${midX},${y1} L${midX},${y2} L${x2},${y2}`);
+    }
+
+    //********************************************************
+    //                Кнопка добавить обьект                //
+    //********************************************************
+    document.getElementById("addBlock").onclick = () => {
+
+        createBlock();
+
+        saveState();
+    };
+
+
+    function updateAllConnections() {
+
+    }
+
+    function saveState() {
+
+    }
+
+</script>
+
+</body>
+</html>

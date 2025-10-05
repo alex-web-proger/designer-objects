@@ -34,7 +34,7 @@
 
     <!-- Добавление -->
     <div class="group">
-        <button title="Добавить таблицу" id="addBlock"><i class="fas fa-table"></i></button>
+        <button title="Добавить таблицу" id="addBlock"><i class="fas fa-plus"></i></button>
         <button title="Добавить связь" id="addConnection"><i class="fas fa-link"></i></button>
     </div>
 
@@ -42,10 +42,8 @@
 
 <!-- Центральная часть -->
 <div id="main">
-
-        <div class="workspace" id="workspace" style="position:relative; width:2000px;">
-            <div id="placeholder"></div>
-            <svg id="connections" width="2000"style="pointer-events:none;">
+        <div class="workspace" id="workspace" style="">
+            <svg id="connections" style="overflow: visible;">
                 <defs>
                     <!-- одиночная палочка (1) -->
                     <marker id="one" markerWidth="6" markerHeight="20" refX="1" refY="10" orient="auto"
@@ -89,38 +87,38 @@
 <!--</div>-->
 
 <script>
-    // const hint = document.getElementById("hint");
-    // document.getElementById("workspace").addEventListener("mousemove", e => {
-    //     hint.textContent = `Координаты: ${e.offsetX}, ${e.offsetY}`;
-    // });
-    //
-    // const splitter = document.getElementById('splitter');
-    // const work = document.getElementById('work-area');
-    // const inspector = document.getElementById('inspector');
-    //
-    // splitter.addEventListener('mousedown', e => {
-    //     e.preventDefault();
-    //     const startX = e.clientX;
-    //     const startWorkspaceWidth = work.offsetWidth;
-    //     const startInspectorWidth = inspector.offsetWidth;
-    //
-    //     function onMouseMove(ev) {
-    //         const dx = ev.clientX - startX;
-    //         const newWorkspaceWidth = startWorkspaceWidth + dx;
-    //         const newInspectorWidth = startInspectorWidth - dx;
-    //         if (newWorkspaceWidth < 100 || newInspectorWidth < 30) return; // минимальные размеры
-    //         work.style.flex = '0 0 ' + newWorkspaceWidth + 'px';
-    //         inspector.style.width = newInspectorWidth + 'px';
-    //     }
-    //
-    //     function onMouseUp() {
-    //         document.removeEventListener('mousemove', onMouseMove);
-    //         document.removeEventListener('mouseup', onMouseUp);
-    //     }
-    //
-    //     document.addEventListener('mousemove', onMouseMove);
-    //     document.addEventListener('mouseup', onMouseUp);
-    // });
+   // const hint = document.getElementById("hint");
+   // document.getElementById("workspace").addEventListener("mousemove", e => {
+   //     hint.textContent = `Координаты: ${e.offsetX}, ${e.offsetY}`;
+   // });
+
+    const splitter = document.getElementById('splitter');
+    const work = document.getElementById('workspace');
+    const inspector = document.getElementById('inspector');
+
+    splitter.addEventListener('mousedown', e => {
+        e.preventDefault();
+        const startX = e.clientX;
+        const startWorkspaceWidth = work.offsetWidth;
+        const startInspectorWidth = inspector.offsetWidth;
+
+        function onMouseMove(ev) {
+            const dx = ev.clientX - startX;
+            const newWorkspaceWidth = startWorkspaceWidth + dx;
+            const newInspectorWidth = startInspectorWidth - dx;
+            if (newWorkspaceWidth < 100 || newInspectorWidth < 100) return; // минимальные размеры
+            work.style.flex = '0 0 ' + newWorkspaceWidth + 'px';
+            inspector.style.width = newInspectorWidth + 'px';
+        }
+
+        function onMouseUp() {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        }
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    });
 </script>
 
 <script src="storage.js"></script>

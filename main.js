@@ -1,6 +1,7 @@
 const workspace = document.getElementById("workspace");
 const addBtn = document.getElementById("addBlock");
 const svgContainer = document.getElementById("connections");
+let objects = [];
 let blockCounter = 0;
 let connections = []; // связи между полями
 let connecting = null;
@@ -83,6 +84,12 @@ function createBlock(data = null) {
     `;
 
     workspace.appendChild(block);
+
+    objects.push({
+        el: block,
+        x: block.offsetLeft,
+        y: block.offsetTop
+    })
 
     let title = block.querySelector(".title");
     title.title = "Для редактирования имени - двойной клик";
@@ -240,15 +247,22 @@ function updateConnection(rel) {
     const a = rel.from.getBoundingClientRect();
     const b = rel.to.getBoundingClientRect();
     const ws = workspace.getBoundingClientRect();
+    const svg = document.getElementById('connections');
+
+    const scrollWidth = ws.scrollWidth;
+    const scrollHeight = ws.scrollHeight;
+    svg.setAttribute('width', scrollWidth);
+    svg.setAttribute('height', scrollHeight);
+    svg.setAttribute('viewBox', `0 0 ${scrollWidth} ${scrollHeight}`); // 💥 КЛЮЧ!
 
     const x1 = a.right - ws.left + 0;
     const y1 = a.top + a.height / 2 - ws.top;
     const x2 = b.left;
     const y2 = b.top + b.height / 2 - ws.top;
 
-    document.getElementById('x1').innerHTML = x1;
+    document.getElementById('x1').innerHTML = svg.getBoundingClientRect().width;
     document.getElementById('x2').innerHTML = x2;
-    document.getElementById('x3').innerHTML = workspace.scrollLeft;
+    document.getElementById('x3').innerHTML = workspace.scrollWidth;
 
     const verticalOffset = Math.abs(y2 - y1) / 2;
     const points = [];

@@ -14,7 +14,6 @@ body {
 #main {
     flex: 1;
     display: flex;
-    /*overflow: hidden;*/
     height: calc(100% - 40px);
 }
 
@@ -212,4 +211,11 @@ path {
 path:hover {
     /*stroke: #666;*/
     /*stroke-width: 1;*/
+}
+#connections{
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 0;
+    overflow: visible;
 }

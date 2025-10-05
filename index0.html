@@ -98,8 +98,6 @@
         }
 
         #workspace {
-            width: 800px;
-            height: 500px;
             overflow: scroll;
             position: relative;
             background: #f0f0f0;
@@ -130,7 +128,7 @@
 
         #canvas {
             position: relative;
-            width: 1000px; /* стартовая ширина */
+            width: 2000px; /* стартовая ширина */
             height: 2000px; /* стартовая высота */
         }
 
@@ -316,6 +314,7 @@
     const canvas = document.getElementById('canvas');
     let connecting = null;
     let tempLine = null;
+    let connections = [];
 
     // ------------------- Функции для имен -------------------
     function toModelName(name) {
@@ -506,7 +505,7 @@
         tempLine.setAttribute("stroke-dasharray", "5,5");
         svgContainer.appendChild(tempLine);
         document.addEventListener("mousemove", onTempLineMoveField); // рисуем временную линию
-       // document.addEventListener("mouseup", onTempLineEndField);    // кнопка отпущена - фиксируем результат
+        document.addEventListener("mouseup", onTempLineEndField);    // кнопка отпущена - фиксируем результат
     }
 
     // ------------------- Временная линия -------------------
@@ -522,6 +521,112 @@
         tempLine.setAttribute("d", `M${x1},${y1} L${midX},${y1} L${midX},${y2} L${x2},${y2}`);
     }
 
+    // ------------------- Завершение соединения -------------------
+    function onTempLineEndField(e) {
+        if (!connecting) return;
+        const target = document.elementFromPoint(e.clientX, e.clientY);
+        const targetLi = target.closest("li");
+        if (targetLi && targetLi !== connecting) {
+            connectFields(connecting, targetLi);
+        }
+        tempLine.remove();
+        tempLine = null;
+        connecting = null;
+        document.removeEventListener("mousemove", onTempLineMoveField);
+        document.removeEventListener("mouseup", onTempLineEndField);
+    }
+
+    // ------------------- Создание постоянной линии -------------------
+    function connectFields(fromLi, toLi, type = "one-to-many") {
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("stroke", "gray");
+        path.setAttribute("stroke-width", "1");
+        path.setAttribute("fill", "none");
+        path.setAttribute("marker-start", "url(#many-start)");
+        path.setAttribute("marker-end", "url(#many)");
+        svgContainer.appendChild(path);
+
+        // хит-зона — невидимая линия для удобного наведения
+        const hitPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        hitPath.setAttribute("stroke", "transparent");
+        hitPath.setAttribute("stroke-width", "8"); // удобная зона
+        hitPath.setAttribute("fill", "none");
+        hitPath.setAttribute("pointer-events", "stroke"); // чтобы ловила события
+        svgContainer.appendChild(hitPath);
+
+        // удаление связи по клику
+        path.addEventListener("click", () => {
+            if (confirm("Удалить связь?")) {
+                const idx = connections.findIndex(c => c.path === path);
+                if (idx !== -1) {
+                    connections[idx].path.remove();         // убрать из DOM
+                    connections.splice(idx, 1);  // убрать из массива
+                    saveConnections();                      // обновить хранилище
+                }
+            }
+        });
+
+        hitPath.addEventListener("mouseenter", () => {
+            path.setAttribute("stroke", "#666");
+            path.setAttribute("stroke-width", "2")
+        });
+        hitPath.addEventListener("mouseleave", () => {
+            path.setAttribute("stroke", "gray");
+            path.setAttribute("stroke-width", "1")
+        });
+
+        const rel = {from: fromLi, to: toLi, path, hitPath};
+        connections.push(rel);
+
+        updateConnection(rel);
+
+        saveConnections();
+    }
+
+    // ------------------- Обновление линии -------------------
+    function updateConnection(rel) {
+        const a = rel.from.getBoundingClientRect();
+        const b = rel.to.getBoundingClientRect();
+        const ws = canvas.getBoundingClientRect();
+        const svg = document.getElementById('connections');
+
+        const scrollWidth = ws.scrollWidth;
+        const scrollHeight = ws.scrollHeight;
+        svg.setAttribute('width', scrollWidth);
+        svg.setAttribute('height', scrollHeight);
+        svg.setAttribute('viewBox', `0 0 ${scrollWidth} ${scrollHeight}`); // 💥 КЛЮЧ!
+
+        const x1 = a.right - ws.left + 0;
+        const y1 = a.top + a.height / 2 - ws.top;
+        const x2 = b.left;
+        const y2 = b.top + b.height / 2 - ws.top;
+
+        const verticalOffset = Math.abs(y2 - y1) / 2;
+        const points = [];
+
+        points.push([x1, y1]);
+
+        if (x2 > x1 && ((x2 - x1) > 35)) {
+            // цель справа — прямой горизонтальный сегмент
+            const midX = (x1 + x2) / 2;
+            points.push([midX, y1]);
+            points.push([midX, y2]);
+        } else {
+            // цель слева — ступенька
+            const midX1 = x1 + 30;
+            points.push([midX1, y1]);
+            const midY = y1 < y2 ? y1 + verticalOffset : y1 - verticalOffset;
+            points.push([midX1, midY]);
+            const midX2 = x2 - 30;
+            points.push([midX2, midY]);
+            points.push([midX2, y2]);
+        }
+
+        points.push([x2, y2]);
+        const d = points.map((p, i) => (i === 0 ? "M" : "L") + p[0] + "," + p[1]).join(" ");
+        rel.path.setAttribute("d", d);
+        rel.hitPath.setAttribute("d", d);
+    }
     //********************************************************
     //                Кнопка добавить обьект                //
     //********************************************************
@@ -534,6 +639,10 @@
 
 
     function updateAllConnections() {
+        connections.forEach(updateConnection);
+    }
+
+    function saveConnections(){
 
     }
 

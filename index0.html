@@ -712,7 +712,11 @@
 
     }
 
+    //**************************************************************
+    // Получить данные о текущем состоянии проекта в формате JSON //
+    //**************************************************************
     function serializeState() {
+
         const blocks = Array.from(document.querySelectorAll(".block")).map(block => {
             const fields = Array.from(block.querySelectorAll(".fields li")).map(li => {
                 const name = li.querySelector("span:nth-child(1)").innerText;
@@ -721,6 +725,7 @@
             });
 
             const title = block.querySelector(".title")?.innerText || "Model";
+
             return {
                 id: block.dataset.id,
                 title,
@@ -743,37 +748,17 @@
         };
     }
 
+    //**************************************************************
+    //         Загрузить конфигурацию проекта из data             //
+    //**************************************************************
     function loadState(data) {
-        // const raw = localStorage.getItem("diagramData");
-        // if (!raw) return;
-        //
-        // const data = JSON.parse(raw);
-        //
-        // data.blocks.forEach(blockData => {
-        //     createBlock({
-        //         title: blockData.title,
-        //         top: blockData.y,
-        //         left: blockData.x,
-        //         fields: blockData.fields.map(f => `${f.name} ${f.type}`),
-        //         id: blockData.id
-        //     });
-        // });
-        //
-        // setTimeout(() => {
-        //     data.connections.forEach(rel => {
-        //         const from = document.querySelector(`[data-block-id="${rel.from.blockId}"][data-field-name="${rel.from.field}"]`);
-        //         const to = document.querySelector(`[data-block-id="${rel.to.blockId}"][data-field-name="${rel.to.field}"]`);
-        //         if (from && to) {
-        //             connectFields(from, to);
-        //         }
-        //     });
-        // }, 0);
-        // Очистка
+
+        // -------------  Очистить рабочее поле  --------------
         document.querySelectorAll(".block").forEach(b => b.remove());
         connections.forEach(c => c.path.remove());
         connections = [];
 
-        // Восстановление блоков
+        // -------------  Восстановление блоков  --------------
         data.blocks.forEach(b => {
             createBlock({
                 title: b.title,
@@ -782,7 +767,7 @@
                 fields: b.fields
             });
 
-            // Назначим id
+            // -------  Задать блокам id и положение  --------
             const block = document.querySelectorAll(".block");
             const lastBlock = block[block.length - 1];
             lastBlock.dataset.id = b.id;
@@ -790,8 +775,9 @@
             lastBlock.y = b.top;
         });
 
-        // Восстановление связей
+        // ----------------- Восстановить связи  ---------------
         data.connections.forEach(rel => {
+
             const fromBlock = document.querySelector(`.block[data-id='${rel.fromId}']`);
             const toBlock = document.querySelector(`.block[data-id='${rel.toId}']`);
 
@@ -802,6 +788,7 @@
             const toField = Array.from(toBlock.querySelectorAll("li"))
                 .find(li => li.dataset.fieldName === rel.toField);
 
+            // ------ Отрисовать линию -------
             if (fromField && toField) {
                 connectFields(fromField, toField);
             }
@@ -810,19 +797,25 @@
         updateAllConnections();
     }
 
-    // Сохранить в draft (автоматически)
+    //***********************************************************************
+    //  Сохранить в draft (черновик) после каждого действия с элементами   //
+    //***********************************************************************
     function saveDraft() {
         const data = serializeState();
         localStorage.setItem("draftState", JSON.stringify(data));
     }
 
-    // Загрузить draft (при запуске)
+    //************************************************************************
+    //       Загрузить draft (черновик) - используется при запуске          //
+    //************************************************************************
     function loadDraft() {
         const data = JSON.parse(localStorage.getItem("draftState") || "null");
         if (data) loadState(data);
     }
 
-    // Сохранить как отдельный проект
+    //***************************************************************
+    //        Сохранить рабочее поле как отдельный проект          //
+    //***************************************************************
     function saveCurrentProjectAs(name) {
         const id = crypto.randomUUID(); // 📌 UUID
         const saved = JSON.parse(localStorage.getItem("savedProjects") || "{}");
@@ -836,7 +829,9 @@
         alert("Проект сохранён!");
     }
 
-    // Загрузить проект по ID
+    //***************************************************************
+    //   Загрузить на рабочее поле проект из хранилища по его ID   //
+    //***************************************************************
     function loadProject(id) {
         const saved = JSON.parse(localStorage.getItem("savedProjects") || "{}");
         if (saved[id]) {
@@ -845,7 +840,9 @@
         }
     }
 
-    // Удалить проект
+    //***************************************************************
+    //           Удалить проект из хранилища по его ID             //
+    //***************************************************************
     function deleteProject(id) {
         const saved = JSON.parse(localStorage.getItem("savedProjects") || "{}");
         delete saved[id];
@@ -856,7 +853,7 @@
     function pushToHistory() {
         projectHistory.push(serializeState());
         if (projectHistory.length > 50) projectHistory.shift(); // ограничение
-        redoStack = []; // сбрасываем редо
+        redoStack = [];                                         // сбрасываем редо
     }
 
     // 📌 Undo

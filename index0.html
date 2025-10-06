@@ -929,16 +929,33 @@
         const undoBtn = document.getElementById('undo');
         const redoBtn = document.getElementById('redo');
 
-        undoBtn.classList.toggle('disabled', !canUndo());
-        redoBtn.classList.toggle('disabled', !canRedo());
+        if (canUndo()) {
+            undoBtn.classList.remove("disabled");
+        } else {
+            undoBtn.classList.add("disabled");
+        }
+
+        if (canRedo()) {
+            redoBtn.classList.remove("disabled");
+        } else {
+            redoBtn.classList.add("disabled");
+        }
     }
 
+    function initHistoryWithState(state) {
+        history = [JSON.stringify(state)];
+        historyPointer = 0;
+        updateUndoRedoButtons();
+    }
     // ---------------------  Перемещение по истории изменений  -------------------
     document.getElementById('undo').onclick = undo;
     document.getElementById('redo').onclick = redo;
 
     // ----------- При обновлении страницы пытаемся загрузить последнее -----------
     loadDraft();
+
+    //  ----------- Инициализация стека истории  ----------------------
+    initHistoryWithState(serializeState());
 
 </script>
 

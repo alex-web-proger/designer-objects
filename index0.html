@@ -415,7 +415,7 @@
       <button class="add-field">+ Добавить поле</button>
     `;
 
-        workspace.appendChild(block);
+        canvas.appendChild(block);
 
         block.x = block.offsetLeft;
         block.y = block.offsetTop;
@@ -950,6 +950,30 @@
     // ---------------------  Перемещение по истории изменений  -------------------
     document.getElementById('undo').onclick = undo;
     document.getElementById('redo').onclick = redo;
+
+    let zoomLevel = 1;
+    const zoomStep = 0.1;
+
+    function applyZoom() {
+        canvas.style.transform = `scale(${zoomLevel})`;
+        canvas.style.transformOrigin = '0 0';
+    }
+
+    document.getElementById('zoomIn').onclick = () => {
+        zoomLevel += zoomStep;
+        applyZoom();
+    };
+
+    document.getElementById('zoomOut').onclick = () => {
+        zoomLevel = Math.max(zoomStep, zoomLevel - zoomStep);
+        applyZoom();
+    };
+
+    document.getElementById('zoomReset').onclick = () => {
+        zoomLevel = 1;
+        applyZoom();
+    };
+
 
     // ----------- При обновлении страницы пытаемся загрузить последнее -----------
     loadDraft();

@@ -260,7 +260,7 @@
     <!-- Undo/Redo и масштаб -->
     <div class="group">
         <button title="Undo" id="undo" class="disabled"><i class="fas fa-undo"></i></button>
-        <button title="Redo" id="redo"><i class="fas fa-redo"></i></button>
+        <button title="Redo" id="redo" class="disabled"><i class="fas fa-redo"></i></button>
         <button title="Увеличить масштаб" id="zoomIn"><i class="fas fa-magnifying-glass-plus"></i></button>
         <button title="Уменьшить масштаб" id="zoomOut"><i class="fas fa-magnifying-glass-minus"></i></button>
         <button title="Сброс масштаба" id="zoomReset"><i class="fas fa-magnifying-glass"></i></button>
@@ -318,9 +318,10 @@
 
     // Глобальные переменные
     let currentProjectId = null;
-    let projectHistory = [];
-    let redoStack = [];
 
+    // === История изменений для Undo/Redo ===
+    let history = [];
+    let historyPointer = -1;
 
     // ------------------- Функции для имен -------------------
     function toModelName(name) {
@@ -455,7 +456,7 @@
 
         adjustCanvasSize();
 
-        saveState();
+        //saveState();
     }
 
     //*******************************************************
@@ -673,43 +674,7 @@
     }
 
     function saveState() {
-        // const blocks = Array.from(document.querySelectorAll(".block")).map(block => {
-        //     return {
-        //         id: block.dataset.id,
-        //         title: block.querySelector(".title").innerText,
-        //         x: block.x,
-        //         y: block.y,
-        //         fields: Array.from(block.querySelectorAll("li")).map(li => {
-        //             return {
-        //                 name: li.dataset.fieldName,
-        //                 type: li.children[1].innerText
-        //             };
-        //         })
-        //     };
-        // });
-        //
-        // const rels = connections.map(rel => {
-        //     return {
-        //         from: {
-        //             blockId: rel.from.dataset.blockId,
-        //             field: rel.from.dataset.fieldName
-        //         },
-        //         to: {
-        //             blockId: rel.to.dataset.blockId,
-        //             field: rel.to.dataset.fieldName
-        //         }
-        //     };
-        // });
-        //
-        // const diagram = {
-        //     blocks,
-        //     connections: rels
-        // };
-        //
-        // localStorage.setItem("diagramData", JSON.stringify(diagram));
         saveDraft();
-        pushToHistory();
-
     }
 
     //**************************************************************
@@ -794,7 +759,7 @@
             }
         });
 
-        updateAllConnections();
+       // updateAllConnections();
     }
 
     //***********************************************************************
@@ -803,6 +768,7 @@
     function saveDraft() {
         const data = serializeState();
         localStorage.setItem("draftState", JSON.stringify(data));
+        pushToHistory(data);
     }
 
     //************************************************************************
@@ -849,32 +815,6 @@
         localStorage.setItem("savedProjects", JSON.stringify(saved));
     }
 
-    // 📌 Запись в историю
-    function pushToHistory() {
-        projectHistory.push(serializeState());
-        if (projectHistory.length > 50) projectHistory.shift(); // ограничение
-        redoStack = [];                                         // сбрасываем редо
-    }
-
-    // 📌 Undo
-    function undo() {
-        if (projectHistory.length > 1) {
-            const last = projectHistory.pop();
-            redoStack.push(last);
-            const previous = projectHistory[projectHistory.length - 1];
-            loadState(previous);
-        }
-    }
-
-    // 📌 Redo
-    function redo() {
-        if (redoStack.length > 0) {
-            const next = redoStack.pop();
-            projectHistory.push(next);
-            loadState(next);
-        }
-    }
-
     document.getElementById("saveProject").onclick = () => {
         const name = prompt("Введите имя проекта:");
         if (name) saveCurrentProjectAs(name);
@@ -915,9 +855,6 @@
         }
     };
 
-    document.getElementById("undo").onclick = undo;
-    document.getElementById("redo").onclick = redo;
-
 
     function adjustCanvasSize() {
         const blocks = document.querySelectorAll(".block");
@@ -947,9 +884,59 @@
         svg.setAttribute('viewBox', `0 0 ${newWidth} ${newHeight}`);
     }
 
+    //**************************************************************
+    //                Запомнить очередное изменение               //
+    //**************************************************************
+    function pushToHistory(state) {
+        // Удаляем всё "вперёд", если мы откатились назад
+        if (historyPointer < history.length - 1) {
+            history = history.slice(0, historyPointer + 1);
+        }
+        // поместить состояние в массив изменений
+        history.push(JSON.stringify(state));
+        historyPointer++;
+        updateUndoRedoButtons();
+    }
 
-    //loadState();
+    //*************************************************************
+    //                Прверка истории изменений                  //
+    //*************************************************************
+    function canUndo() {
+        return historyPointer > 0;
+    }
+    function canRedo() {
+        return historyPointer < history.length - 1;
+    }
+
+    function undo() {
+        if (!canUndo()) return;
+        historyPointer--;
+        loadState(JSON.parse(history[historyPointer]));
+        updateUndoRedoButtons();
+    }
+
+    function redo() {
+        if (!canRedo()) return;
+        historyPointer++;
+        loadState(JSON.parse(history[historyPointer]));
+        updateUndoRedoButtons();
+    }
+
+    function updateUndoRedoButtons() {
+        const undoBtn = document.getElementById('undo');
+        const redoBtn = document.getElementById('redo');
+
+        undoBtn.classList.toggle('disabled', !canUndo());
+        redoBtn.classList.toggle('disabled', !canRedo());
+    }
+
+    // ---------------------  Перемещение по истории изменений  -------------------
+    document.getElementById('undo').onclick = undo;
+    document.getElementById('redo').onclick = redo;
+
+    // ----------- При обновлении страницы пытаемся загрузить последнее -----------
     loadDraft();
+
 </script>
 
 </body>

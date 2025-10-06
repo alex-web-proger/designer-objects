@@ -215,15 +215,6 @@
             cursor: pointer;
         }
 
-
-        /*svg {*/
-        /*    position: absolute;*/
-        /*    top: 0;*/
-        /*    left: 0;*/
-        /*    pointer-events: none;*/
-        /*    z-index: 0;*/
-        /*}*/
-
         svg {
             position: absolute;
             top: 0;
@@ -233,12 +224,17 @@
             pointer-events: none;
         }
 
-
         #workspace, .block, .header, .title {
             user-select: none;
             -webkit-user-select: none;
             -moz-user-select: none;
             -ms-user-select: none;
+        }
+
+        path {
+            cursor: pointer;
+            pointer-events: stroke;
+            transition: stroke 0.3s, stroke-width 0.3s;
         }
     </style>
 </head>
@@ -318,6 +314,8 @@
 
     // Глобальные переменные
     let currentProjectId = null;
+    let zoomLevel = 1;
+    const zoomStep = 0.1;
 
     // === История изменений для Undo/Redo ===
     let history = [];
@@ -415,7 +413,7 @@
       <button class="add-field">+ Добавить поле</button>
     `;
 
-        workspace.appendChild(block);
+        canvas.appendChild(block);
 
         block.x = block.offsetLeft;
         block.y = block.offsetTop;
@@ -455,8 +453,6 @@
         [...block.querySelectorAll("li")].forEach(attachFieldEvents);
 
         adjustCanvasSize();
-
-        //saveState();
     }
 
     //*******************************************************
@@ -577,7 +573,7 @@
         svgContainer.appendChild(hitPath);
 
         // удаление связи по клику
-        path.addEventListener("click", () => {
+        hitPath.addEventListener("click", () => {
             if (confirm("Удалить связь?")) {
                 const idx = connections.findIndex(c => c.path === path);
                 if (idx !== -1) {
@@ -589,6 +585,7 @@
         });
 
         hitPath.addEventListener("mouseenter", () => {
+            //path.setAttribute("stroke", "tomato");
             path.setAttribute("stroke", "#666");
             path.setAttribute("stroke-width", "2")
         });
@@ -951,8 +948,6 @@
     document.getElementById('undo').onclick = undo;
     document.getElementById('redo').onclick = redo;
 
-    let zoomLevel = 1;
-    const zoomStep = 0.1;
 
     function applyZoom() {
         canvas.style.transform = `scale(${zoomLevel})`;

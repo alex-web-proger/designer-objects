@@ -657,9 +657,7 @@
     //                Кнопка добавить обьект                //
     //********************************************************
     document.getElementById("addBlock").onclick = () => {
-
         createBlock();
-
         saveState();
     };
 
@@ -758,10 +756,7 @@
                 connectFields(fromField, toField);
             }
         });
-
-        //updateAllConnections();
     }
-
     //***********************************************************************
     //  Сохранить в draft (черновик) после каждого действия с элементами   //
     //***********************************************************************
@@ -770,7 +765,6 @@
         localStorage.setItem("draftState", JSON.stringify(data));
         pushToHistory(data);
     }
-
     //************************************************************************
     //       Загрузить draft (черновик) - используется при запуске          //
     //************************************************************************
@@ -778,7 +772,6 @@
         const data = JSON.parse(localStorage.getItem("draftState") || "null");
         if (data) loadState(data);
     }
-
     //***************************************************************
     //        Сохранить рабочее поле как отдельный проект          //
     //***************************************************************
@@ -794,7 +787,6 @@
         localStorage.setItem("savedProjects", JSON.stringify(saved));
         alert("Проект сохранён!");
     }
-
     //***************************************************************
     //   Загрузить на рабочее поле проект из хранилища по его ID   //
     //***************************************************************
@@ -805,7 +797,6 @@
             currentProjectId = id;
         }
     }
-
     //***************************************************************
     //           Удалить проект из хранилища по его ID             //
     //***************************************************************
@@ -815,11 +806,17 @@
         localStorage.setItem("savedProjects", JSON.stringify(saved));
     }
 
+    //*************************************************************
+    //                   Сохранить имя проекта                   //
+    //*************************************************************
     document.getElementById("saveProject").onclick = () => {
         const name = prompt("Введите имя проекта:");
         if (name) saveCurrentProjectAs(name);
     };
 
+    //**************************************************************
+    //               Загрузить проект из списка                   //
+    //**************************************************************
     document.getElementById("loadProject").onclick = () => {
         const saved = JSON.parse(localStorage.getItem("savedProjects") || "{}");
         const keys = Object.keys(saved);
@@ -827,7 +824,6 @@
             alert("Нет сохранённых проектов");
             return;
         }
-
         const menu = keys.map((k, i) => `${i + 1}. ${saved[k].name}`).join("\n");
         const choice = prompt(`Выберите номер проекта:\n${menu}`);
         const index = parseInt(choice);
@@ -836,6 +832,9 @@
         }
     };
 
+    //*************************************************************
+    //                Удалить проект из списка                   //
+    //*************************************************************
     document.getElementById("deleteProject").onclick = () => {
         const saved = JSON.parse(localStorage.getItem("savedProjects") || "{}");
         const keys = Object.keys(saved);
@@ -843,7 +842,6 @@
             alert("Нет проектов для удаления");
             return;
         }
-
         const menu = keys.map((k, i) => `${i + 1}. ${saved[k].name}`).join("\n");
         const choice = prompt(`Удалить проект:\n${menu}`);
         const index = parseInt(choice);
@@ -855,7 +853,9 @@
         }
     };
 
-
+    //************************************************************
+    //       Подстроить область рисования при перемещении       //
+    //************************************************************
     function adjustCanvasSize() {
         const blocks = document.querySelectorAll(".block");
         let maxX = 0;
@@ -888,13 +888,15 @@
     //                Запомнить очередное изменение               //
     //**************************************************************
     function pushToHistory(state) {
+
         // Удаляем всё "вперёд", если мы откатились назад
         if (historyPointer < history.length - 1) {
             history = history.slice(0, historyPointer + 1);
         }
+
         // поместить состояние в массив изменений
-        history.push(JSON.stringify(state));
         historyPointer++;
+        history.push(JSON.stringify(state));
         updateUndoRedoButtons();
     }
 

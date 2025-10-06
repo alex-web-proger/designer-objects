@@ -224,15 +224,15 @@
         /*    z-index: 0;*/
         /*}*/
 
-        svg{
+        svg {
             position: absolute;
-            top:0;
-            left:0;
-            width:100%;
-            height:100%;
-            pointer-events:none;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
         }
- 
+
 
         #workspace, .block, .header, .title {
             user-select: none;
@@ -316,6 +316,12 @@
     let tempLine = null;
     let connections = [];
 
+    // Глобальные переменные
+    let currentProjectId = null;
+    let projectHistory = [];
+    let redoStack = [];
+
+
     // ------------------- Функции для имен -------------------
     function toModelName(name) {
         name = name.replace(/[^a-zA-Z0-9\s_]/g, "").trim();
@@ -370,6 +376,15 @@
         saveState();
     }
 
+    // вспомогательная функция для генерации UUID
+    function generateUUID() {
+        // простой вариант UUID v4
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+
     //*******************************************************
     //                     Создание блока                  //
     //*******************************************************
@@ -380,6 +395,8 @@
         block.className = "block";
         block.style.top = (data?.top || 50) + "px";
         block.style.left = (data?.left || 50) + "px";
+        // Присваиваем уникальный UUID
+        block.dataset.id = data?.id || generateUUID();
 
         const uniqueName = getUniqueDefaultName("Model");
 
@@ -391,7 +408,7 @@
       <ul class="fields">
         ${(data?.fields || ["id INT", "name VARCHAR"]).map(f => {
             const [name, type] = f.split(" ");
-            return `<li data-field-name="${name}"><span>${name}</span><span>${type}</span></li>`;
+            return `<li data-field-name="${name}" data-block-id="${block.dataset.id}"><span>${name}</span><span>${type}</span></li>`;
         }).join("")}
       </ul>
       <button class="add-field">+ Добавить поле</button>
@@ -436,6 +453,8 @@
 
         [...block.querySelectorAll("li")].forEach(attachFieldEvents);
 
+        adjustCanvasSize();
+
         saveState();
     }
 
@@ -467,6 +486,7 @@
             startX = ev.clientX;
             startY = ev.clientY;
 
+            adjustCanvasSize();
             updateAllConnections();
         }
 
@@ -585,48 +605,54 @@
 
     // ------------------- Обновление линии -------------------
     function updateConnection(rel) {
-        const a = rel.from.getBoundingClientRect();
-        const b = rel.to.getBoundingClientRect();
-        const ws = canvas.getBoundingClientRect();
+        const from = rel.from;
+        const to = rel.to;
         const svg = document.getElementById('connections');
+        const canvas = document.getElementById('canvas');
 
-        const scrollWidth = ws.scrollWidth;
-        const scrollHeight = ws.scrollHeight;
-        svg.setAttribute('width', scrollWidth);
-        svg.setAttribute('height', scrollHeight);
-        svg.setAttribute('viewBox', `0 0 ${scrollWidth} ${scrollHeight}`); // 💥 КЛЮЧ!
+        // Подгоняем SVG под canvas
+        const width = canvas.offsetWidth;
+        const height = canvas.offsetHeight;
+        svg.setAttribute('width', width);
+        svg.setAttribute('height', height);
+        svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
 
-        const x1 = a.right - ws.left + 0;
-        const y1 = a.top + a.height / 2 - ws.top;
-        const x2 = b.left;
-        const y2 = b.top + b.height / 2 - ws.top;
+        // Получаем координаты li через getBoundingClientRect
+        const aRect = from.getBoundingClientRect();
+        const bRect = to.getBoundingClientRect();
+        const canvasRect = canvas.getBoundingClientRect();
 
-        const verticalOffset = Math.abs(y2 - y1) / 2;
+        const x1 = aRect.right - canvasRect.left;
+        const y1 = aRect.top + aRect.height / 2 - canvasRect.top;
+        const x2 = bRect.left - canvasRect.left;
+        const y2 = bRect.top + bRect.height / 2 - canvasRect.top;
+
         const points = [];
-
         points.push([x1, y1]);
 
+        const verticalOffset = Math.abs(y2 - y1) / 2;
+
         if (x2 > x1 && ((x2 - x1) > 35)) {
-            // цель справа — прямой горизонтальный сегмент
             const midX = (x1 + x2) / 2;
             points.push([midX, y1]);
             points.push([midX, y2]);
         } else {
-            // цель слева — ступенька
             const midX1 = x1 + 30;
             points.push([midX1, y1]);
             const midY = y1 < y2 ? y1 + verticalOffset : y1 - verticalOffset;
-            points.push([midX1, midY]);
             const midX2 = x2 - 30;
+            points.push([midX1, midY]);
             points.push([midX2, midY]);
             points.push([midX2, y2]);
         }
 
         points.push([x2, y2]);
+
         const d = points.map((p, i) => (i === 0 ? "M" : "L") + p[0] + "," + p[1]).join(" ");
         rel.path.setAttribute("d", d);
-        rel.hitPath.setAttribute("d", d);
+        if (rel.hitPath) rel.hitPath.setAttribute("d", d);
     }
+
     //********************************************************
     //                Кнопка добавить обьект                //
     //********************************************************
@@ -642,14 +668,291 @@
         connections.forEach(updateConnection);
     }
 
-    function saveConnections(){
-
+    function saveConnections() {
+        saveState();
     }
 
     function saveState() {
+        // const blocks = Array.from(document.querySelectorAll(".block")).map(block => {
+        //     return {
+        //         id: block.dataset.id,
+        //         title: block.querySelector(".title").innerText,
+        //         x: block.x,
+        //         y: block.y,
+        //         fields: Array.from(block.querySelectorAll("li")).map(li => {
+        //             return {
+        //                 name: li.dataset.fieldName,
+        //                 type: li.children[1].innerText
+        //             };
+        //         })
+        //     };
+        // });
+        //
+        // const rels = connections.map(rel => {
+        //     return {
+        //         from: {
+        //             blockId: rel.from.dataset.blockId,
+        //             field: rel.from.dataset.fieldName
+        //         },
+        //         to: {
+        //             blockId: rel.to.dataset.blockId,
+        //             field: rel.to.dataset.fieldName
+        //         }
+        //     };
+        // });
+        //
+        // const diagram = {
+        //     blocks,
+        //     connections: rels
+        // };
+        //
+        // localStorage.setItem("diagramData", JSON.stringify(diagram));
+        saveDraft();
+        pushToHistory();
 
     }
 
+    function serializeState() {
+        const blocks = Array.from(document.querySelectorAll(".block")).map(block => {
+            const fields = Array.from(block.querySelectorAll(".fields li")).map(li => {
+                const name = li.querySelector("span:nth-child(1)").innerText;
+                const type = li.querySelector("span:nth-child(2)").innerText;
+                return `${name} ${type}`;
+            });
+
+            const title = block.querySelector(".title")?.innerText || "Model";
+            return {
+                id: block.dataset.id,
+                title,
+                top: block.y,
+                left: block.x,
+                fields
+            };
+        });
+
+        const rels = connections.map(c => ({
+            fromId: c.from.closest(".block").dataset.id,
+            fromField: c.from.dataset.fieldName,
+            toId: c.to.closest(".block").dataset.id,
+            toField: c.to.dataset.fieldName
+        }));
+
+        return {
+            blocks,
+            connections: rels
+        };
+    }
+
+    function loadState(data) {
+        // const raw = localStorage.getItem("diagramData");
+        // if (!raw) return;
+        //
+        // const data = JSON.parse(raw);
+        //
+        // data.blocks.forEach(blockData => {
+        //     createBlock({
+        //         title: blockData.title,
+        //         top: blockData.y,
+        //         left: blockData.x,
+        //         fields: blockData.fields.map(f => `${f.name} ${f.type}`),
+        //         id: blockData.id
+        //     });
+        // });
+        //
+        // setTimeout(() => {
+        //     data.connections.forEach(rel => {
+        //         const from = document.querySelector(`[data-block-id="${rel.from.blockId}"][data-field-name="${rel.from.field}"]`);
+        //         const to = document.querySelector(`[data-block-id="${rel.to.blockId}"][data-field-name="${rel.to.field}"]`);
+        //         if (from && to) {
+        //             connectFields(from, to);
+        //         }
+        //     });
+        // }, 0);
+        // Очистка
+        document.querySelectorAll(".block").forEach(b => b.remove());
+        connections.forEach(c => c.path.remove());
+        connections = [];
+
+        // Восстановление блоков
+        data.blocks.forEach(b => {
+            createBlock({
+                title: b.title,
+                top: b.top,
+                left: b.left,
+                fields: b.fields
+            });
+
+            // Назначим id
+            const block = document.querySelectorAll(".block");
+            const lastBlock = block[block.length - 1];
+            lastBlock.dataset.id = b.id;
+            lastBlock.x = b.left;
+            lastBlock.y = b.top;
+        });
+
+        // Восстановление связей
+        data.connections.forEach(rel => {
+            const fromBlock = document.querySelector(`.block[data-id='${rel.fromId}']`);
+            const toBlock = document.querySelector(`.block[data-id='${rel.toId}']`);
+
+            if (!fromBlock || !toBlock) return;
+
+            const fromField = Array.from(fromBlock.querySelectorAll("li"))
+                .find(li => li.dataset.fieldName === rel.fromField);
+            const toField = Array.from(toBlock.querySelectorAll("li"))
+                .find(li => li.dataset.fieldName === rel.toField);
+
+            if (fromField && toField) {
+                connectFields(fromField, toField);
+            }
+        });
+
+        updateAllConnections();
+    }
+
+    // Сохранить в draft (автоматически)
+    function saveDraft() {
+        const data = serializeState();
+        localStorage.setItem("draftState", JSON.stringify(data));
+    }
+
+    // Загрузить draft (при запуске)
+    function loadDraft() {
+        const data = JSON.parse(localStorage.getItem("draftState") || "null");
+        if (data) loadState(data);
+    }
+
+    // Сохранить как отдельный проект
+    function saveCurrentProjectAs(name) {
+        const id = crypto.randomUUID(); // 📌 UUID
+        const saved = JSON.parse(localStorage.getItem("savedProjects") || "{}");
+        saved[id] = {
+            id,
+            name,
+            timestamp: Date.now(),
+            data: serializeState()
+        };
+        localStorage.setItem("savedProjects", JSON.stringify(saved));
+        alert("Проект сохранён!");
+    }
+
+    // Загрузить проект по ID
+    function loadProject(id) {
+        const saved = JSON.parse(localStorage.getItem("savedProjects") || "{}");
+        if (saved[id]) {
+            loadState(saved[id].data);
+            currentProjectId = id;
+        }
+    }
+
+    // Удалить проект
+    function deleteProject(id) {
+        const saved = JSON.parse(localStorage.getItem("savedProjects") || "{}");
+        delete saved[id];
+        localStorage.setItem("savedProjects", JSON.stringify(saved));
+    }
+
+    // 📌 Запись в историю
+    function pushToHistory() {
+        projectHistory.push(serializeState());
+        if (projectHistory.length > 50) projectHistory.shift(); // ограничение
+        redoStack = []; // сбрасываем редо
+    }
+
+    // 📌 Undo
+    function undo() {
+        if (projectHistory.length > 1) {
+            const last = projectHistory.pop();
+            redoStack.push(last);
+            const previous = projectHistory[projectHistory.length - 1];
+            loadState(previous);
+        }
+    }
+
+    // 📌 Redo
+    function redo() {
+        if (redoStack.length > 0) {
+            const next = redoStack.pop();
+            projectHistory.push(next);
+            loadState(next);
+        }
+    }
+
+    document.getElementById("saveProject").onclick = () => {
+        const name = prompt("Введите имя проекта:");
+        if (name) saveCurrentProjectAs(name);
+    };
+
+    document.getElementById("loadProject").onclick = () => {
+        const saved = JSON.parse(localStorage.getItem("savedProjects") || "{}");
+        const keys = Object.keys(saved);
+        if (keys.length === 0) {
+            alert("Нет сохранённых проектов");
+            return;
+        }
+
+        const menu = keys.map((k, i) => `${i + 1}. ${saved[k].name}`).join("\n");
+        const choice = prompt(`Выберите номер проекта:\n${menu}`);
+        const index = parseInt(choice);
+        if (!isNaN(index) && index > 0 && index <= keys.length) {
+            loadProject(keys[index - 1]);
+        }
+    };
+
+    document.getElementById("deleteProject").onclick = () => {
+        const saved = JSON.parse(localStorage.getItem("savedProjects") || "{}");
+        const keys = Object.keys(saved);
+        if (keys.length === 0) {
+            alert("Нет проектов для удаления");
+            return;
+        }
+
+        const menu = keys.map((k, i) => `${i + 1}. ${saved[k].name}`).join("\n");
+        const choice = prompt(`Удалить проект:\n${menu}`);
+        const index = parseInt(choice);
+        if (!isNaN(index) && index > 0 && index <= keys.length) {
+            if (confirm("Точно удалить?")) {
+                deleteProject(keys[index - 1]);
+                alert("Проект удалён");
+            }
+        }
+    };
+
+    document.getElementById("undo").onclick = undo;
+    document.getElementById("redo").onclick = redo;
+
+
+    function adjustCanvasSize() {
+        const blocks = document.querySelectorAll(".block");
+        let maxX = 0;
+        let maxY = 0;
+
+        blocks.forEach(block => {
+            const right = block.x + block.offsetWidth;
+            const bottom = block.y + block.offsetHeight;
+            if (right > maxX) maxX = right;
+            if (bottom > maxY) maxY = bottom;
+        });
+
+        // добавляем небольшой отступ
+        const padding = 50;
+
+        const newWidth = Math.max(canvas.offsetWidth, maxX + padding);
+        const newHeight = Math.max(canvas.offsetHeight, maxY + padding);
+
+        canvas.style.width = newWidth + "px";
+        canvas.style.height = newHeight + "px";
+
+        // также обновляем SVG
+        const svg = document.getElementById("connections");
+        svg.setAttribute('width', newWidth);
+        svg.setAttribute('height', newHeight);
+        svg.setAttribute('viewBox', `0 0 ${newWidth} ${newHeight}`);
+    }
+
+
+    //loadState();
+    loadDraft();
 </script>
 
 </body>

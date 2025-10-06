@@ -549,6 +549,7 @@
         const targetLi = target.closest("li");
         if (targetLi && targetLi !== connecting) {
             connectFields(connecting, targetLi);
+            saveConnections();
         }
         tempLine.remove();
         tempLine = null;
@@ -600,8 +601,6 @@
         connections.push(rel);
 
         updateConnection(rel);
-
-        saveConnections();
     }
 
     // ------------------- Обновление линии -------------------
@@ -750,6 +749,7 @@
 
             const fromField = Array.from(fromBlock.querySelectorAll("li"))
                 .find(li => li.dataset.fieldName === rel.fromField);
+
             const toField = Array.from(toBlock.querySelectorAll("li"))
                 .find(li => li.dataset.fieldName === rel.toField);
 
@@ -759,7 +759,7 @@
             }
         });
 
-       // updateAllConnections();
+        //updateAllConnections();
     }
 
     //***********************************************************************
@@ -911,6 +911,7 @@
     function undo() {
         if (!canUndo()) return;
         historyPointer--;
+        document.getElementById('x1').innerHTML = historyPointer;
         loadState(JSON.parse(history[historyPointer]));
         updateUndoRedoButtons();
     }

@@ -40,7 +40,7 @@
         }
 
         #toolbar button {
-            border: none;
+            border: 1px solid transparent;
             background: #fff;
             padding: 5px 8px;
             cursor: pointer;
@@ -69,6 +69,16 @@
         #toolbar button:hover i {
             color: rgba(0, 0, 0, 1); /* при наведении темнее */
         }
+
+        #toolbar button.active {
+            background-color: #ddd;
+            border: 1px solid #999;
+            box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.2),
+            inset -2px -2px 4px rgba(255, 255, 255, 0.6);
+            transform: translateY(1px);
+            color: black;
+        }
+
 
         /* Цвета для отдельных кнопок */
         #saveProject i {
@@ -244,11 +254,13 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-image: linear-gradient(to right, #dadada 1px, transparent 1px),
-            linear-gradient(to bottom, #dadada 1px, transparent 1px);
-            background-size: 10px 10px; /* шаг сетки */
             z-index: 0;
             pointer-events: none;
+        }
+        .grid-visible {
+            background-image: linear-gradient(to right, #ddd 1px, transparent 1px),
+            linear-gradient(to bottom, #ddd 1px, transparent 1px);
+            background-size: 20px 20px;
         }
 
     </style>
@@ -289,7 +301,7 @@
 
     <div class="group">
         <button title="Показать сетку" id="toggleGrid"><i class="fas fa-border-all"></i></button>
-        <button title="Прилипание к сетке" id="toggleSnap"><i class="fas fa-magnet"></i></button>
+        <button title="Прилипание к сетке" id="toggleSnap" class="active"><i class="fas fa-magnet"></i></button>
     </div>
 </div>
 
@@ -339,9 +351,14 @@
     let zoomLevel = 1;
     const zoomStep = 0.1;
 
+    const gridSize = 20;
+
     // === История изменений для Undo/Redo ===
     let history = [];
     let historyPointer = -1;
+
+    let showGrid = localStorage.getItem("showGrid") === "true";
+    let snapToGrid = localStorage.getItem("snapToGrid") === "true";
 
     // ------------------- Функции для имен -------------------
     function toModelName(name) {
@@ -498,9 +515,22 @@
             block.y = block.y < 10 ? 10 : block.y;
 
             // Привязка к сетке
-            const gridSize = 10;
-            block.x = Math.round(block.x / gridSize) * gridSize;
-            block.y = Math.round(block.y / gridSize) * gridSize;
+            if(snapToGrid) {
+               // block.x = Math.round(block.x / gridSize) * gridSize;
+                //block.y = Math.round(block.y / gridSize) * gridSize;
+
+                const threshold = 4; // пикселей
+
+                const x = Math.round(block.x / gridSize) * gridSize;
+                if (Math.abs(x - block.x) < threshold) {
+                    block.x = x;
+                }
+
+                const y = Math.round(block.y / gridSize) * gridSize;
+                if (Math.abs(y - block.y) < threshold) {
+                    block.y = y;
+                }
+            }
 
             block.style.left = block.x + "px";
             block.style.top = block.y + "px";
@@ -1040,6 +1070,9 @@
         applyZoom();
     };
 
+    //***************************************************************
+    //                         Зум колесиком                       //
+    //***************************************************************
     const MIN_ZOOM = 0.5;
     const MAX_ZOOM = 1.5;
 
@@ -1053,15 +1086,228 @@
         const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoomLevel * factor));
 
         if (newZoom === zoomLevel) return;
-
         zoomLevel = newZoom;
-
         applyZoom();
 
     }, { passive: false });
 
+    //***************************************************************
+    //                  Таблица и привязка к ней                   //
+    //***************************************************************
+    function applyGridSettings() {
+        let btnToggleGrid = document.getElementById("toggleGrid");
+        let btnToggleSnap = document.getElementById("toggleSnap");
+
+        if (showGrid) {
+            canvas.classList.add("grid-visible");
+            btnToggleGrid.classList.add("active");
+        }
+        else {
+            canvas.classList.remove("grid-visible");
+            btnToggleGrid.classList.remove("active");
+        }
+
+        if (snapToGrid) {
+            btnToggleSnap.classList.add("active");
+        }
+        else {
+            btnToggleSnap.classList.remove("active");
+        }
+
+    }
+
+    document.getElementById("toggleGrid").addEventListener("click", () => {
+        showGrid = !showGrid;
+        localStorage.setItem("showGrid", showGrid);
+        applyGridSettings();
+    });
+
+    document.getElementById("toggleSnap").addEventListener("click", () => {
+        snapToGrid = !snapToGrid;
+        localStorage.setItem("snapToGrid", snapToGrid);
+        applyGridSettings();
+    });
+
+    //*****************************************************************************************************************
+    // inspector.js
+    const inspector = {
+        container: document.getElementById("inspector"),
+        selectedBlock: null, // для подсветки
+
+        clear() {
+            this.container.innerHTML = "";
+            if (this.selectedBlock) {
+                // сброс подсветки
+                this.selectedBlock.style.boxShadow = "2px 2px 6px rgba(0,0,0,0.1)";
+                this.selectedBlock = null;
+            }
+        },
+
+        show(block) {
+            if (!block) return;
+
+            // подсветка блока и скролл к нему
+            this.highlightBlock(block);
+        },
+
+        showProperties(block) {
+            this.clear();
+            if (!block) return;
+
+            this.selectedBlock = block;
+
+            // Подсветка блока серой рамкой
+            block.style.boxShadow = "0 0 0 3px rgba(128,128,128,0.6), 2px 2px 6px rgba(0,0,0,0.1)";
+
+            // Скроллим к блоку
+            this.scrollToBlock(block);
+
+            // Заголовок модели
+            const title = document.createElement("h3");
+            title.textContent = block.querySelector(".title")?.innerText || "Модель";
+            this.container.appendChild(title);
+
+            // Список полей
+            const fieldsList = block.querySelectorAll(".fields li");
+            if (fieldsList.length > 0) {
+                const fieldsHeader = document.createElement("h4");
+                fieldsHeader.textContent = "Поля:";
+                fieldsHeader.style.marginTop = "10px";
+                this.container.appendChild(fieldsHeader);
+
+                const ul = document.createElement("ul");
+                ul.style.listStyle = "none";
+                ul.style.padding = 0;
+                ul.style.margin = 0;
+
+                fieldsList.forEach(li => {
+                    const name = li.querySelector("span:nth-child(1)")?.innerText;
+                    const type = li.querySelector("span:nth-child(2)")?.innerText;
+                    const item = document.createElement("li");
+                    item.style.display = "flex";
+                    item.style.justifyContent = "space-between";
+                    item.style.padding = "2px 5px";
+                    item.style.cursor = "default";
+                    item.innerHTML = `<span>${name}</span><span>${type}</span>`;
+                    ul.appendChild(item);
+                });
+
+                this.container.appendChild(ul);
+            } else {
+                const empty = document.createElement("p");
+                empty.textContent = "Нет полей";
+                empty.style.color = "#888";
+                this.container.appendChild(empty);
+            }
+        },
+
+        showModelList(blocks) {
+            this.clear();
+
+            const header = document.createElement("h3");
+            header.textContent = "Все модели";
+            this.container.appendChild(header);
+
+            if (!blocks || blocks.length === 0) {
+                const empty = document.createElement("p");
+                empty.textContent = "Пока нет моделей";
+                empty.style.color = "#888";
+                this.container.appendChild(empty);
+                return;
+            }
+
+            const list = document.createElement("ul");
+            list.style.listStyle = "none";
+            list.style.padding = 0;
+            list.style.margin = 0;
+
+            blocks.forEach(block => {
+                const li = document.createElement("li");
+                li.textContent = block.querySelector(".title")?.innerText || "Без имени";
+                li.style.padding = "5px 8px";
+                li.style.cursor = "pointer";
+
+                let clickTimeout;
+
+                li.addEventListener("click", () => {
+                    clearTimeout(clickTimeout);
+                    clickTimeout = setTimeout(() => {
+                        // одиночный клик — подсветка и скролл
+                        this.highlightBlock(block);
+                    }, 250);
+                });
+
+                li.addEventListener("dblclick", () => {
+                    clearTimeout(clickTimeout);
+                    // двойной клик — показать свойства
+                    this.showProperties(block);
+                });
+
+                li.addEventListener("mouseenter", () => li.style.background = "#f0f0f0");
+                li.addEventListener("mouseleave", () => li.style.background = "transparent");
+                list.appendChild(li);
+            });
+
+            this.container.appendChild(list);
+        },
+
+        highlightBlock(block) {
+            if (this.selectedBlock && this.selectedBlock !== block) {
+                this.selectedBlock.style.boxShadow = "2px 2px 6px rgba(0,0,0,0.1)";
+            }
+            this.selectedBlock = block;
+            block.style.boxShadow = "0 0 0 4px rgba(0,123,255,0.3), 2px 2px 6px rgba(0,0,0,0.1)";
+            this.scrollToBlock(block);
+        },
+
+        scrollToBlock(block) {
+            const canvasRect = canvas.getBoundingClientRect();
+            const blockRect = block.getBoundingClientRect();
+            const workspace = document.getElementById("workspace");
+
+            const offsetX = blockRect.left - canvasRect.left;
+            const offsetY = blockRect.top - canvasRect.top;
+
+            if (offsetX < workspace.scrollLeft || offsetX > workspace.scrollLeft + workspace.clientWidth) {
+                workspace.scrollLeft = offsetX - workspace.clientWidth/2 + blockRect.width/2;
+            }
+            if (offsetY < workspace.scrollTop || offsetY > workspace.scrollTop + workspace.clientHeight) {
+                workspace.scrollTop = offsetY - workspace.clientHeight/2 + blockRect.height/2;
+            }
+        }
+    };
+
+
+
+
+    const canvasEl = document.getElementById("canvas");
+    const connectionsEl = document.getElementById("connections");
+
+    canvasEl.addEventListener("click", (e) => {
+        const target = e.target;
+
+        // Клик на блок → игнорируем
+        if (target.closest(".block")) {
+            inspector.show(target.closest(".block"))
+            return;
+        }
+
+        // Клик на линию → игнорируем
+        if (target.closest("path")) {
+            return;
+        }
+
+        // Клик по пустому фону канвы
+        const blocks = Array.from(canvasEl.querySelectorAll(".block"));
+        inspector.showModelList(blocks);
+    });
+
+
+
+
     // ----------- При обновлении страницы пытаемся загрузить последнее -----------
     loadDraft();
+    applyGridSettings();
 
     //  ----------- Инициализация стека истории  ----------------------
     initHistoryWithState(serializeState());

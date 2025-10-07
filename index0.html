@@ -284,6 +284,13 @@
         <button title="Добавить таблицу" id="addBlock"><i class="fas fa-plus"></i></button>
         <button title="Добавить связь" id="addConnection"><i class="fas fa-link"></i></button>
     </div>
+
+    <div class="separator"></div>
+
+    <div class="group">
+        <button title="Показать сетку" id="toggleGrid"><i class="fas fa-border-all"></i></button>
+        <button title="Прилипание к сетке" id="toggleSnap"><i class="fas fa-magnet"></i></button>
+    </div>
 </div>
 
 <div id="main">
@@ -492,10 +499,8 @@
 
             // Привязка к сетке
             const gridSize = 10;
-            //block.x = Math.round(block.x / gridSize) * gridSize;
-            //block.y = Math.round(block.y / gridSize) * gridSize;
-
-            //document.getElementById('x1').innerHTML = block.y;
+            block.x = Math.round(block.x / gridSize) * gridSize;
+            block.y = Math.round(block.y / gridSize) * gridSize;
 
             block.style.left = block.x + "px";
             block.style.top = block.y + "px";

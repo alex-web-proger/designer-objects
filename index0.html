@@ -236,6 +236,21 @@
             pointer-events: stroke;
             transition: stroke 0.3s, stroke-width 0.3s;
         }
+
+        #canvas::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: linear-gradient(to right, #dadada 1px, transparent 1px),
+            linear-gradient(to bottom, #dadada 1px, transparent 1px);
+            background-size: 10px 10px; /* шаг сетки */
+            z-index: 0;
+            pointer-events: none;
+        }
+
     </style>
 </head>
 <body>
@@ -259,7 +274,7 @@
         <button title="Redo" id="redo" class="disabled"><i class="fas fa-redo"></i></button>
         <button title="Увеличить масштаб" id="zoomIn"><i class="fas fa-magnifying-glass-plus"></i></button>
         <button title="Уменьшить масштаб" id="zoomOut"><i class="fas fa-magnifying-glass-minus"></i></button>
-        <button title="Сброс масштаба" id="zoomReset"><i class="fas fa-magnifying-glass"></i></button>
+        <button title="Сброс масштаба" id="zoomReset" class="disabled"><i class="fas fa-magnifying-glass"></i></button>
     </div>
 
     <div class="separator"></div>
@@ -475,6 +490,11 @@
             block.x = block.x < 10 ? 10 : block.x;
             block.y = block.y < 10 ? 10 : block.y;
 
+            // Привязка к сетке
+            const gridSize = 10;
+            //block.x = Math.round(block.x / gridSize) * gridSize;
+            //block.y = Math.round(block.y / gridSize) * gridSize;
+
             //document.getElementById('x1').innerHTML = block.y;
 
             block.style.left = block.x + "px";
@@ -525,15 +545,20 @@
         document.addEventListener("mouseup", onTempLineEndField);    // кнопка отпущена - фиксируем результат
     }
 
-    // ------------------- Временная линия -------------------
     function onTempLineMoveField(e) {
         if (!connecting) return;
+
+        const zoom = zoomLevel || 1;
+
         const a = connecting.getBoundingClientRect();
         const cs = canvas.getBoundingClientRect();
-        const x1 = a.right - cs.left;
-        const y1 = a.top + a.height / 2 - cs.top;
-        const x2 = e.clientX - cs.left;
-        const y2 = e.clientY - cs.top;
+
+        // Преобразуем координаты с учетом масштаба
+        const x1 = (a.right - cs.left) / zoom;
+        const y1 = (a.top + a.height / 2 - cs.top) / zoom;
+        const x2 = (e.clientX - cs.left) / zoom;
+        const y2 = (e.clientY - cs.top) / zoom;
+
         const midX = (x1 + x2) / 2;
         tempLine.setAttribute("d", `M${x1},${y1} L${midX},${y1} L${midX},${y2} L${x2},${y2}`);
     }
@@ -615,14 +640,18 @@
         svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
 
         // Получаем координаты li через getBoundingClientRect
-        const aRect = from.getBoundingClientRect();
-        const bRect = to.getBoundingClientRect();
+        const zoom = zoomLevel;
+
+        const aRect = rel.from.getBoundingClientRect();
+        const bRect = rel.to.getBoundingClientRect();
         const canvasRect = canvas.getBoundingClientRect();
 
-        const x1 = aRect.right - canvasRect.left;
-        const y1 = aRect.top + aRect.height / 2 - canvasRect.top;
-        const x2 = bRect.left - canvasRect.left;
-        const y2 = bRect.top + bRect.height / 2 - canvasRect.top;
+        const x1 = (aRect.right - canvasRect.left) / zoom;
+        const y1 = (aRect.top + aRect.height / 2 - canvasRect.top) / zoom;
+
+        const x2 = (bRect.left - canvasRect.left) / zoom;
+        const y2 = (bRect.top + bRect.height / 2 - canvasRect.top) / zoom;
+
 
         const points = [];
         points.push([x1, y1]);
@@ -754,6 +783,7 @@
             }
         });
     }
+
     //***********************************************************************
     //  Сохранить в draft (черновик) после каждого действия с элементами   //
     //***********************************************************************
@@ -762,6 +792,7 @@
         localStorage.setItem("draftState", JSON.stringify(data));
         pushToHistory(data);
     }
+
     //************************************************************************
     //       Загрузить draft (черновик) - используется при запуске          //
     //************************************************************************
@@ -769,6 +800,7 @@
         const data = JSON.parse(localStorage.getItem("draftState") || "null");
         if (data) loadState(data);
     }
+
     //***************************************************************
     //        Сохранить рабочее поле как отдельный проект          //
     //***************************************************************
@@ -784,6 +816,7 @@
         localStorage.setItem("savedProjects", JSON.stringify(saved));
         alert("Проект сохранён!");
     }
+
     //***************************************************************
     //   Загрузить на рабочее поле проект из хранилища по его ID   //
     //***************************************************************
@@ -794,6 +827,7 @@
             currentProjectId = id;
         }
     }
+
     //***************************************************************
     //           Удалить проект из хранилища по его ID             //
     //***************************************************************
@@ -903,6 +937,7 @@
     function canUndo() {
         return historyPointer > 0;
     }
+
     function canRedo() {
         return historyPointer < history.length - 1;
     }
@@ -944,24 +979,55 @@
         historyPointer = 0;
         updateUndoRedoButtons();
     }
-    // ---------------------  Перемещение по истории изменений  -------------------
+
+    // ------------  Перемещение по истории изменений  -----------
     document.getElementById('undo').onclick = undo;
     document.getElementById('redo').onclick = redo;
 
 
+    //  ----------------- Управление зумом  ----------------------
+    let zoomReset = document.getElementById('zoomReset');
+    let zoomIn = document.getElementById('zoomIn');
+    let zoomOut = document.getElementById('zoomOut');
+
+    //************************************************************
+    //              Управление кнопкой сброса зума              //
+    //************************************************************
+    function btnZoomReset() {
+        if (zoomLevel == 1) zoomReset.classList.add("disabled");
+        else zoomReset.classList.remove("disabled");
+    }
+
+    function btnZoomIn() {
+        if (zoomLevel > 1.4) zoomIn.classList.add("disabled");
+        else zoomIn.classList.remove("disabled");
+    }
+
+    function btnZoomOut() {
+        if (zoomLevel < 0.6) zoomOut.classList.add("disabled");
+        else zoomOut.classList.remove("disabled");
+    }
+
     function applyZoom() {
         canvas.style.transform = `scale(${zoomLevel})`;
         canvas.style.transformOrigin = '0 0';
+        btnZoomReset();
+        btnZoomIn();
+        btnZoomOut();
     }
 
     document.getElementById('zoomIn').onclick = () => {
-        zoomLevel += zoomStep;
-        applyZoom();
+        if(zoomLevel < 1.4) {
+            zoomLevel += zoomStep;
+            applyZoom();
+        }
     };
 
     document.getElementById('zoomOut').onclick = () => {
-        zoomLevel = Math.max(zoomStep, zoomLevel - zoomStep);
-        applyZoom();
+        if(zoomLevel > 0.6) {
+            zoomLevel = Math.max(zoomStep, zoomLevel - zoomStep);
+            applyZoom();
+        }
     };
 
     document.getElementById('zoomReset').onclick = () => {
@@ -969,6 +1035,25 @@
         applyZoom();
     };
 
+    const MIN_ZOOM = 0.5;
+    const MAX_ZOOM = 1.5;
+
+    document.getElementById("workspace").addEventListener("wheel", function (e) {
+        if (!e.ctrlKey) return;
+
+        e.preventDefault();
+
+        const delta = -e.deltaY;
+        const factor = delta > 0 ? 1.1 : 0.9;
+        const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoomLevel * factor));
+
+        if (newZoom === zoomLevel) return;
+
+        zoomLevel = newZoom;
+
+        applyZoom();
+
+    }, { passive: false });
 
     // ----------- При обновлении страницы пытаемся загрузить последнее -----------
     loadDraft();

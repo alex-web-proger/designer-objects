@@ -8,10 +8,12 @@ function applyGridSettings() {
     if (showGrid) {
         canvas.classList.add("grid-visible");
         btnToggleGrid.classList.add("active");
+        btnToggleSnap.style.display = 'block';
     }
     else {
         canvas.classList.remove("grid-visible");
         btnToggleGrid.classList.remove("active");
+        btnToggleSnap.style.display = 'none';
     }
 
     if (snapToGrid) {

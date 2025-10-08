@@ -28,7 +28,6 @@ function canRedo() {
 function undo() {
     if (!canUndo()) return;
     historyPointer--;
-    document.getElementById('x1').innerHTML = historyPointer;
     loadState(JSON.parse(history[historyPointer]));
     updateUndoRedoButtons();
 }

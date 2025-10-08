@@ -5,7 +5,7 @@ const inspector = {
     selectedBlock: null, // для подсветки
 
     clear() {
-        this.container.innerHTML = "";
+        this.container.replaceChildren();
         if (this.selectedBlock) {
             // сброс подсветки
             this.selectedBlock.style.boxShadow = "2px 2px 6px rgba(0,0,0,0.1)";

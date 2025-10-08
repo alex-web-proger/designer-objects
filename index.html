@@ -2,12 +2,14 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Workbench Designer с полями</title>
+    <title>Диаграмма с авторасширением</title>
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
           integrity="sha512-..." crossorigin="anonymous" referrerpolicy="no-referrer"/>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
 <!-- Верхняя панель -->
 <div id="toolbar">
 
@@ -24,10 +26,10 @@
     <!-- Undo/Redo и масштаб -->
     <div class="group">
         <button title="Undo" id="undo" class="disabled"><i class="fas fa-undo"></i></button>
-        <button title="Redo" id="redo"><i class="fas fa-redo"></i></button>
+        <button title="Redo" id="redo" class="disabled"><i class="fas fa-redo"></i></button>
         <button title="Увеличить масштаб" id="zoomIn"><i class="fas fa-magnifying-glass-plus"></i></button>
         <button title="Уменьшить масштаб" id="zoomOut"><i class="fas fa-magnifying-glass-minus"></i></button>
-        <button title="Сброс масштаба" id="zoomReset"><i class="fas fa-magnifying-glass"></i></button>
+        <button title="Сброс масштаба" id="zoomReset" class="disabled"><i class="fas fa-magnifying-glass"></i></button>
     </div>
 
     <div class="separator"></div>
@@ -38,19 +40,19 @@
         <button title="Добавить связь" id="addConnection"><i class="fas fa-link"></i></button>
     </div>
 
+    <div class="separator"></div>
+
+    <div class="group">
+        <button title="Показать сетку" id="toggleGrid"><i class="fas fa-border-all"></i></button>
+        <button title="Прилипание к сетке" id="toggleSnap" class="active"><i class="fas fa-magnet"></i></button>
+    </div>
 </div>
 
-<!-- Центральная часть -->
 <div id="main">
-        <div class="workspace" id="workspace" style="">
-            <svg id="connections" style="overflow: visible;">
+    <div id="workspace">
+        <div id="canvas">
+            <svg id="connections">
                 <defs>
-                    <!-- одиночная палочка (1) -->
-                    <marker id="one" markerWidth="6" markerHeight="20" refX="1" refY="10" orient="auto"
-                            markerUnits="strokeWidth">
-                        <path d="M1,0 L1,20" stroke="black" stroke-width="1"/>
-                    </marker>
-
                     <!-- воронья лапка (N) -->
                     <marker id="many" class="marker-relation" markerWidth="14" markerHeight="14" refX="13" refY="7"
                             orient="auto" markerUnits="strokeWidth">
@@ -64,6 +66,7 @@
                 </defs>
             </svg>
         </div>
+    </div>
 
     <div id="splitter"></div>
 
@@ -77,53 +80,701 @@
         <p>X3: <span id="x3"></span></p>
         <p>Y3: <span id="y3"></span></p>
     </div>
-
 </div>
 
-<!-- Нижняя строка -->
-<!--<div id="statusbar">-->
-<!--    <span id="projectName">Проект: безымянный</span>-->
-<!--    <span id="hint">Подсказка: ничего не выбрано</span>-->
-<!--</div>-->
-
 <script>
-   // const hint = document.getElementById("hint");
-   // document.getElementById("workspace").addEventListener("mousemove", e => {
-   //     hint.textContent = `Координаты: ${e.offsetX}, ${e.offsetY}`;
-   // });
+    const svgContainer = document.getElementById("connections");
+    const canvas = document.getElementById('canvas');
+    let connecting = null;
+    let tempLine = null;
+    let connections = [];
 
-    const splitter = document.getElementById('splitter');
-    const work = document.getElementById('workspace');
-    const inspector = document.getElementById('inspector');
+    // Глобальные переменные
+    let currentProjectId = null;
+    let zoomLevel = 1;
+    const zoomStep = 0.1;
 
-    splitter.addEventListener('mousedown', e => {
-        e.preventDefault();
-        const startX = e.clientX;
-        const startWorkspaceWidth = work.offsetWidth;
-        const startInspectorWidth = inspector.offsetWidth;
+    const gridSize = 20;
 
+    // === История изменений для Undo/Redo ===
+    let history = [];
+    let historyPointer = -1;
+
+    let showGrid = localStorage.getItem("showGrid") === "true";
+    let snapToGrid = localStorage.getItem("snapToGrid") === "true";
+
+    // ------------------- Функции для имен -------------------
+    function toModelName(name) {
+        name = name.replace(/[^a-zA-Z0-9\s_]/g, "").trim();
+        const parts = name.split(/[\s_]+/);
+        const camel = parts.map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join("");
+        return camel || "Model";
+    }
+
+    function isUniqueName(name, currentBlock = null) {
+        const allTitles = Array.from(document.querySelectorAll(".block .title"))
+            .filter(t => t !== currentBlock)
+            .map(t => t.innerText.trim());
+        return !allTitles.includes(name.trim());
+    }
+
+    function getUniqueDefaultName(base = "Model") {
+        base = toModelName(base);
+        let name = base, suffix = 1;
+        while (!isUniqueName(name)) {
+            name = base + '_' + suffix++;
+        }
+        return name;
+    }
+
+    // ------------------- Редактирование заголовка -------------------
+    function enableEditing(titleEl) {
+        const currentText = titleEl.innerText;
+        const input = document.createElement("input");
+        input.type = "text";
+        input.value = currentText;
+        input.className = "title-input";
+        titleEl.replaceWith(input);
+        input.focus();
+        input.addEventListener("blur", () => finishEditing(input));
+        input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") finishEditing(input);
+        });
+    }
+
+    function finishEditing(input) {
+        let newName = toModelName(input.value);
+        let suffix = 1, baseName = newName;
+        while (!isUniqueName(newName, input)) {
+            newName = `${baseName}${suffix++}`;
+        }
+        const newTitle = document.createElement("div");
+        newTitle.className = "title";
+        newTitle.innerText = newName;
+        input.replaceWith(newTitle);
+        let header = newTitle.parentElement;
+        header.ondblclick = () => enableEditing(newTitle);
+        saveState();
+    }
+
+    // вспомогательная функция для генерации UUID
+    function generateUUID() {
+        // простой вариант UUID v4
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+
+    //*******************************************************
+    //                     Создание блока                  //
+    //*******************************************************
+    function createBlock(data = null) {
+
+        const block = document.createElement("div");
+
+        block.className = "block";
+        block.style.top = (data?.top || 50) + "px";
+        block.style.left = (data?.left || 50) + "px";
+        // Присваиваем уникальный UUID
+        block.dataset.id = data?.id || generateUUID();
+
+        const uniqueName = getUniqueDefaultName("Model");
+
+        block.innerHTML = `
+      <div class="block-header">
+        <span class="title">${data?.title || uniqueName}</span>
+        <span class="delete-block">×</span>
+      </div>
+      <ul class="fields">
+        ${(data?.fields || ["id INT", "name VARCHAR"]).map(f => {
+            const [name, type] = f.split(" ");
+            return `<li data-field-name="${name}" data-block-id="${block.dataset.id}"><span>${name}</span><span>${type}</span></li>`;
+        }).join("")}
+      </ul>
+      <button class="add-field">+ Добавить поле</button>
+    `;
+
+        canvas.appendChild(block);
+
+        block.x = block.offsetLeft;
+        block.y = block.offsetTop;
+
+        let title = block.querySelector(".title");
+
+        title.title = "Для редактирования имени - двойной клик";
+
+        block.querySelector(".delete-block").onclick = () => {
+            if (confirm("Удалить обьект?")) {
+                block.remove();
+                saveState();
+            }
+        };
+
+        // block.querySelector(".add-field").onclick = () => {
+        //     const li = document.createElement("li");
+        //     li.innerHTML = "<span>new_field</span><span>INT</span>";
+        //     block.querySelector(".fields").appendChild(li);
+        //     attachFieldEvents(li);
+        //     saveState();
+        // };
+        //
+        title.parentElement.ondblclick = () => enableEditing(title);
+
+        // ------------------- Перетаскивание блока -------------------
+        let header = block.querySelector(".block-header");
+
+        header.onmousedown = e => {
+            if (e.shiftKey) {
+                //startFieldConnection(block, e);
+            } else {
+                startDragging(block, e);
+            }
+        };
+
+        [...block.querySelectorAll("li")].forEach(attachFieldEvents);
+
+        adjustCanvasSize();
+    }
+
+    //*******************************************************
+    //                   Перетаскивание                    //
+    //*******************************************************
+    function startDragging(block, e) {
+
+        let startX = e.clientX;
+        let startY = e.clientY;
+
+        // Вызывается при перемещении блока
         function onMouseMove(ev) {
+
             const dx = ev.clientX - startX;
-            const newWorkspaceWidth = startWorkspaceWidth + dx;
-            const newInspectorWidth = startInspectorWidth - dx;
-            if (newWorkspaceWidth < 100 || newInspectorWidth < 100) return; // минимальные размеры
-            work.style.flex = '0 0 ' + newWorkspaceWidth + 'px';
-            inspector.style.width = newInspectorWidth + 'px';
+            const dy = ev.clientY - startY;
+
+            block.x += dx;
+            block.y += dy;
+
+            block.x = block.x < 10 ? 10 : block.x;
+            block.y = block.y < 10 ? 10 : block.y;
+
+            // Привязка к сетке
+            if(snapToGrid) {
+               // block.x = Math.round(block.x / gridSize) * gridSize;
+                //block.y = Math.round(block.y / gridSize) * gridSize;
+
+                const threshold = 4; // пикселей
+
+                const x = Math.round(block.x / gridSize) * gridSize;
+                if (Math.abs(x - block.x) < threshold) {
+                    block.x = x;
+                }
+
+                const y = Math.round(block.y / gridSize) * gridSize;
+                if (Math.abs(y - block.y) < threshold) {
+                    block.y = y;
+                }
+            }
+
+            block.style.left = block.x + "px";
+            block.style.top = block.y + "px";
+
+            startX = ev.clientX;
+            startY = ev.clientY;
+
+            adjustCanvasSize();
+            updateAllConnections();
         }
 
-        function onMouseUp() {
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
+        document.addEventListener("mousemove", onMouseMove);
+
+        document.onmouseup = () => {
+            document.removeEventListener("mousemove", onMouseMove);
+            document.onmouseup = null;
+            saveState();
+        };
+    }
+
+    //********************************************************
+    //             События полей для соединения             //
+    //********************************************************
+    function attachFieldEvents(li) {
+
+        li.onmousedown = e => {
+
+            if (e.shiftKey) {
+
+                startFieldConnection(li, e);
+
+                e.preventDefault();
+            }
+        };
+    }
+
+    // ------------ Начало соединения поля ------------------
+    function startFieldConnection(li, e) {
+        connecting = li;
+        tempLine = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        tempLine.setAttribute("stroke", "gray");
+        tempLine.setAttribute("stroke-width", "1");
+        tempLine.setAttribute("fill", "none");
+        tempLine.setAttribute("stroke-dasharray", "5,5");
+        svgContainer.appendChild(tempLine);
+        document.addEventListener("mousemove", onTempLineMoveField); // рисуем временную линию
+        document.addEventListener("mouseup", onTempLineEndField);    // кнопка отпущена - фиксируем результат
+    }
+
+    function onTempLineMoveField(e) {
+        if (!connecting) return;
+
+        const zoom = zoomLevel || 1;
+
+        const a = connecting.getBoundingClientRect();
+        const cs = canvas.getBoundingClientRect();
+
+        // Преобразуем координаты с учетом масштаба
+        const x1 = (a.right - cs.left) / zoom;
+        const y1 = (a.top + a.height / 2 - cs.top) / zoom;
+        const x2 = (e.clientX - cs.left) / zoom;
+        const y2 = (e.clientY - cs.top) / zoom;
+
+        const midX = (x1 + x2) / 2;
+        tempLine.setAttribute("d", `M${x1},${y1} L${midX},${y1} L${midX},${y2} L${x2},${y2}`);
+    }
+
+    // ------------------- Завершение соединения -------------------
+    function onTempLineEndField(e) {
+        if (!connecting) return;
+        const target = document.elementFromPoint(e.clientX, e.clientY);
+        const targetLi = target.closest("li");
+        if (targetLi && targetLi !== connecting) {
+            connectFields(connecting, targetLi);
+            saveConnections();
+        }
+        tempLine.remove();
+        tempLine = null;
+        connecting = null;
+        document.removeEventListener("mousemove", onTempLineMoveField);
+        document.removeEventListener("mouseup", onTempLineEndField);
+    }
+
+    // ------------------- Создание постоянной линии -------------------
+    function connectFields(fromLi, toLi, type = "one-to-many") {
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("stroke", "gray");
+        path.setAttribute("stroke-width", "1");
+        path.setAttribute("fill", "none");
+        path.setAttribute("marker-start", "url(#many-start)");
+        path.setAttribute("marker-end", "url(#many)");
+        svgContainer.appendChild(path);
+
+        // хит-зона — невидимая линия для удобного наведения
+        const hitPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        hitPath.setAttribute("stroke", "transparent");
+        hitPath.setAttribute("stroke-width", "8"); // удобная зона
+        hitPath.setAttribute("fill", "none");
+        hitPath.setAttribute("pointer-events", "stroke"); // чтобы ловила события
+        svgContainer.appendChild(hitPath);
+
+        // удаление связи по клику
+        hitPath.addEventListener("click", () => {
+            if (confirm("Удалить связь?")) {
+                const idx = connections.findIndex(c => c.path === path);
+                if (idx !== -1) {
+                    connections[idx].path.remove();         // убрать из DOM
+                    connections.splice(idx, 1);  // убрать из массива
+                    saveConnections();                      // обновить хранилище
+                }
+            }
+        });
+
+        hitPath.addEventListener("mouseenter", () => {
+            //path.setAttribute("stroke", "tomato");
+            path.setAttribute("stroke", "#666");
+            path.setAttribute("stroke-width", "2")
+        });
+        hitPath.addEventListener("mouseleave", () => {
+            path.setAttribute("stroke", "gray");
+            path.setAttribute("stroke-width", "1")
+        });
+
+        const rel = {from: fromLi, to: toLi, path, hitPath};
+        connections.push(rel);
+
+        updateConnection(rel);
+    }
+
+    // ------------------- Обновление линии -------------------
+    function updateConnection(rel) {
+        const from = rel.from;
+        const to = rel.to;
+        const svg = document.getElementById('connections');
+        const canvas = document.getElementById('canvas');
+
+        // Подгоняем SVG под canvas
+        const width = canvas.offsetWidth;
+        const height = canvas.offsetHeight;
+        svg.setAttribute('width', width);
+        svg.setAttribute('height', height);
+        svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+
+        // Получаем координаты li через getBoundingClientRect
+        const zoom = zoomLevel;
+
+        const aRect = rel.from.getBoundingClientRect();
+        const bRect = rel.to.getBoundingClientRect();
+        const canvasRect = canvas.getBoundingClientRect();
+
+        const x1 = (aRect.right - canvasRect.left) / zoom;
+        const y1 = (aRect.top + aRect.height / 2 - canvasRect.top) / zoom;
+
+        const x2 = (bRect.left - canvasRect.left) / zoom;
+        const y2 = (bRect.top + bRect.height / 2 - canvasRect.top) / zoom;
+
+
+        const points = [];
+        points.push([x1, y1]);
+
+        const verticalOffset = Math.abs(y2 - y1) / 2;
+
+        if (x2 > x1 && ((x2 - x1) > 35)) {
+            const midX = (x1 + x2) / 2;
+            points.push([midX, y1]);
+            points.push([midX, y2]);
+        } else {
+            const midX1 = x1 + 30;
+            points.push([midX1, y1]);
+            const midY = y1 < y2 ? y1 + verticalOffset : y1 - verticalOffset;
+            const midX2 = x2 - 30;
+            points.push([midX1, midY]);
+            points.push([midX2, midY]);
+            points.push([midX2, y2]);
         }
 
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-    });
+        points.push([x2, y2]);
+
+        const d = points.map((p, i) => (i === 0 ? "M" : "L") + p[0] + "," + p[1]).join(" ");
+        rel.path.setAttribute("d", d);
+        if (rel.hitPath) rel.hitPath.setAttribute("d", d);
+    }
+
+    //********************************************************
+    //                Кнопка добавить обьект                //
+    //********************************************************
+    document.getElementById("addBlock").onclick = () => {
+        createBlock();
+        saveState();
+    };
+
+
+    function updateAllConnections() {
+        connections.forEach(updateConnection);
+    }
+
+    function saveConnections() {
+        saveState();
+    }
+
+    function saveState() {
+        saveDraft();
+    }
+
+    //**************************************************************
+    // Получить данные о текущем состоянии проекта в формате JSON //
+    //**************************************************************
+    function serializeState() {
+
+        const blocks = Array.from(document.querySelectorAll(".block")).map(block => {
+            const fields = Array.from(block.querySelectorAll(".fields li")).map(li => {
+                const name = li.querySelector("span:nth-child(1)").innerText;
+                const type = li.querySelector("span:nth-child(2)").innerText;
+                return `${name} ${type}`;
+            });
+
+            const title = block.querySelector(".title")?.innerText || "Model";
+
+            return {
+                id: block.dataset.id,
+                title,
+                top: block.y,
+                left: block.x,
+                fields
+            };
+        });
+
+        const rels = connections.map(c => ({
+            fromId: c.from.closest(".block").dataset.id,
+            fromField: c.from.dataset.fieldName,
+            toId: c.to.closest(".block").dataset.id,
+            toField: c.to.dataset.fieldName
+        }));
+
+        return {
+            blocks,
+            connections: rels
+        };
+    }
+
+    //**************************************************************
+    //         Загрузить конфигурацию проекта из data             //
+    //**************************************************************
+    function loadState(data) {
+
+        // -------------  Очистить рабочее поле  --------------
+        document.querySelectorAll(".block").forEach(b => b.remove());
+        connections.forEach(c => c.path.remove());
+        connections = [];
+
+        // -------------  Восстановление блоков  --------------
+        data.blocks.forEach(b => {
+            createBlock({
+                title: b.title,
+                top: b.top,
+                left: b.left,
+                fields: b.fields
+            });
+
+            // -------  Задать блокам id и положение  --------
+            const block = document.querySelectorAll(".block");
+            const lastBlock = block[block.length - 1];
+            lastBlock.dataset.id = b.id;
+            lastBlock.x = b.left;
+            lastBlock.y = b.top;
+        });
+
+        // ----------------- Восстановить связи  ---------------
+        data.connections.forEach(rel => {
+
+            const fromBlock = document.querySelector(`.block[data-id='${rel.fromId}']`);
+            const toBlock = document.querySelector(`.block[data-id='${rel.toId}']`);
+
+            if (!fromBlock || !toBlock) return;
+
+            const fromField = Array.from(fromBlock.querySelectorAll("li"))
+                .find(li => li.dataset.fieldName === rel.fromField);
+
+            const toField = Array.from(toBlock.querySelectorAll("li"))
+                .find(li => li.dataset.fieldName === rel.toField);
+
+            // ------ Отрисовать линию -------
+            if (fromField && toField) {
+                connectFields(fromField, toField);
+            }
+        });
+    }
+
+    //***********************************************************************
+    //  Сохранить в draft (черновик) после каждого действия с элементами   //
+    //***********************************************************************
+    function saveDraft() {
+        const data = serializeState();
+        localStorage.setItem("draftState", JSON.stringify(data));
+        pushToHistory(data);
+    }
+
+    //************************************************************************
+    //       Загрузить draft (черновик) - используется при запуске          //
+    //************************************************************************
+    function loadDraft() {
+        const data = JSON.parse(localStorage.getItem("draftState") || "null");
+        if (data) loadState(data);
+    }
+
+    //***************************************************************
+    //        Сохранить рабочее поле как отдельный проект          //
+    //***************************************************************
+    function saveCurrentProjectAs(name) {
+        const id = crypto.randomUUID(); // 📌 UUID
+        const saved = JSON.parse(localStorage.getItem("savedProjects") || "{}");
+        saved[id] = {
+            id,
+            name,
+            timestamp: Date.now(),
+            data: serializeState()
+        };
+        localStorage.setItem("savedProjects", JSON.stringify(saved));
+        alert("Проект сохранён!");
+    }
+
+    //***************************************************************
+    //   Загрузить на рабочее поле проект из хранилища по его ID   //
+    //***************************************************************
+    function loadProject(id) {
+        const saved = JSON.parse(localStorage.getItem("savedProjects") || "{}");
+        if (saved[id]) {
+            loadState(saved[id].data);
+            currentProjectId = id;
+        }
+    }
+
+    //***************************************************************
+    //           Удалить проект из хранилища по его ID             //
+    //***************************************************************
+    function deleteProject(id) {
+        const saved = JSON.parse(localStorage.getItem("savedProjects") || "{}");
+        delete saved[id];
+        localStorage.setItem("savedProjects", JSON.stringify(saved));
+    }
+
+    //*************************************************************
+    //                   Сохранить имя проекта                   //
+    //*************************************************************
+    document.getElementById("saveProject").onclick = () => {
+        const name = prompt("Введите имя проекта:");
+        if (name) saveCurrentProjectAs(name);
+    };
+
+    //**************************************************************
+    //               Загрузить проект из списка                   //
+    //**************************************************************
+    document.getElementById("loadProject").onclick = () => {
+        const saved = JSON.parse(localStorage.getItem("savedProjects") || "{}");
+        const keys = Object.keys(saved);
+        if (keys.length === 0) {
+            alert("Нет сохранённых проектов");
+            return;
+        }
+        const menu = keys.map((k, i) => `${i + 1}. ${saved[k].name}`).join("\n");
+        const choice = prompt(`Выберите номер проекта:\n${menu}`);
+        const index = parseInt(choice);
+        if (!isNaN(index) && index > 0 && index <= keys.length) {
+            loadProject(keys[index - 1]);
+        }
+    };
+
+    //*************************************************************
+    //                Удалить проект из списка                   //
+    //*************************************************************
+    document.getElementById("deleteProject").onclick = () => {
+        const saved = JSON.parse(localStorage.getItem("savedProjects") || "{}");
+        const keys = Object.keys(saved);
+        if (keys.length === 0) {
+            alert("Нет проектов для удаления");
+            return;
+        }
+        const menu = keys.map((k, i) => `${i + 1}. ${saved[k].name}`).join("\n");
+        const choice = prompt(`Удалить проект:\n${menu}`);
+        const index = parseInt(choice);
+        if (!isNaN(index) && index > 0 && index <= keys.length) {
+            if (confirm("Точно удалить?")) {
+                deleteProject(keys[index - 1]);
+                alert("Проект удалён");
+            }
+        }
+    };
+
+    //************************************************************
+    //       Подстроить область рисования при перемещении       //
+    //************************************************************
+    function adjustCanvasSize() {
+        const blocks = document.querySelectorAll(".block");
+        let maxX = 0;
+        let maxY = 0;
+
+        blocks.forEach(block => {
+            const right = block.x + block.offsetWidth;
+            const bottom = block.y + block.offsetHeight;
+            if (right > maxX) maxX = right;
+            if (bottom > maxY) maxY = bottom;
+        });
+
+        // добавляем небольшой отступ
+        const padding = 50;
+
+        const newWidth = Math.max(canvas.offsetWidth, maxX + padding);
+        const newHeight = Math.max(canvas.offsetHeight, maxY + padding);
+
+        canvas.style.width = newWidth + "px";
+        canvas.style.height = newHeight + "px";
+
+        // также обновляем SVG
+        const svg = document.getElementById("connections");
+        svg.setAttribute('width', newWidth);
+        svg.setAttribute('height', newHeight);
+        svg.setAttribute('viewBox', `0 0 ${newWidth} ${newHeight}`);
+    }
+
+    //**************************************************************
+    //                Запомнить очередное изменение               //
+    //**************************************************************
+    function pushToHistory(state) {
+
+        // Удаляем всё "вперёд", если мы откатились назад
+        if (historyPointer < history.length - 1) {
+            history = history.slice(0, historyPointer + 1);
+        }
+
+        // поместить состояние в массив изменений
+        historyPointer++;
+        history.push(JSON.stringify(state));
+        updateUndoRedoButtons();
+    }
+
+    //*************************************************************
+    //                Прверка истории изменений                  //
+    //*************************************************************
+    function canUndo() {
+        return historyPointer > 0;
+    }
+
+    function canRedo() {
+        return historyPointer < history.length - 1;
+    }
+
+    function undo() {
+        if (!canUndo()) return;
+        historyPointer--;
+        document.getElementById('x1').innerHTML = historyPointer;
+        loadState(JSON.parse(history[historyPointer]));
+        updateUndoRedoButtons();
+    }
+
+    function redo() {
+        if (!canRedo()) return;
+        historyPointer++;
+        loadState(JSON.parse(history[historyPointer]));
+        updateUndoRedoButtons();
+    }
+
+    function updateUndoRedoButtons() {
+        const undoBtn = document.getElementById('undo');
+        const redoBtn = document.getElementById('redo');
+
+        if (canUndo()) {
+            undoBtn.classList.remove("disabled");
+        } else {
+            undoBtn.classList.add("disabled");
+        }
+
+        if (canRedo()) {
+            redoBtn.classList.remove("disabled");
+        } else {
+            redoBtn.classList.add("disabled");
+        }
+    }
+
+    function initHistoryWithState(state) {
+        history = [JSON.stringify(state)];
+        historyPointer = 0;
+        updateUndoRedoButtons();
+    }
+
+    // ------------  Перемещение по истории изменений  -----------
+    document.getElementById('undo').onclick = undo;
+    document.getElementById('redo').onclick = redo;
+
+
+    // ----------- При обновлении страницы пытаемся загрузить последнее -----------
+    loadDraft();
+    applyGridSettings();
+
+    //  ----------- Инициализация стека истории  ----------------------
+    initHistoryWithState(serializeState());
+
 </script>
 
-<script src="storage.js"></script>
-<script src="name_object.js"></script>
-<script src="main.js"></script>
+<script src="js/inspector.js"></script>
+<script src="js/zoom.js"></script>
+<script src="js/grid.js"></script>
 
 </body>
 </html>

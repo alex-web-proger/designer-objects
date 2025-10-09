@@ -1,4 +1,3 @@
-
 const inspector = {
 
     container: document.getElementById("inspector"),
@@ -21,30 +20,34 @@ const inspector = {
     },
 
     showProperties(block) {
+
         this.clear();
+
         if (!block) return;
 
         this.selectedBlock = block;
 
-        // Подсветка блока серой рамкой
-        block.style.boxShadow = "0 0 0 3px rgba(128,128,128,0.6), 2px 2px 6px rgba(0,0,0,0.1)";
+        this.highlightBlock(block);
 
-        // Скроллим к блоку
-        this.scrollToBlock(block);
+        // === новый заголовок через шаблон ===
+        const template = document.getElementById("inspector-title-template");
+        const node = template.content.cloneNode(true);
 
-        // Заголовок модели
-        const title = document.createElement("h3");
-        title.textContent = block.querySelector(".title")?.innerText || "Модель";
-        this.container.appendChild(title);
+        const titleEl = node.querySelector(".title-text");
+        const backBtn = node.querySelector(".back-btn");
 
-        // Список полей
+        titleEl.textContent = block.querySelector(".title")?.innerText || "Модель";
+
+        backBtn.addEventListener("click", () => {
+            const blocks = Array.from(document.querySelectorAll(".block"));
+            inspector.showModelList(blocks);
+        });
+
+        this.container.appendChild(node);
+
+        // === дальше идёт отрисовка полей ===
         const fieldsList = block.querySelectorAll(".fields li");
         if (fieldsList.length > 0) {
-            const fieldsHeader = document.createElement("h4");
-            fieldsHeader.textContent = "Поля:";
-            fieldsHeader.style.marginTop = "10px";
-            this.container.appendChild(fieldsHeader);
-
             const ul = document.createElement("ul");
             ul.style.listStyle = "none";
             ul.style.padding = 0;
@@ -57,7 +60,6 @@ const inspector = {
                 item.style.display = "flex";
                 item.style.justifyContent = "space-between";
                 item.style.padding = "2px 5px";
-                item.style.cursor = "default";
                 item.innerHTML = `<span>${name}</span><span>${type}</span>`;
                 ul.appendChild(item);
             });
@@ -74,9 +76,19 @@ const inspector = {
     showModelList(blocks) {
         this.clear();
 
-        const header = document.createElement("h3");
-        header.textContent = "Все модели";
-        this.container.appendChild(header);
+        // === новый заголовок через шаблон ===
+        const template = document.getElementById("inspector-model-list");
+        const node = template.content.cloneNode(true);
+
+        const backBtn = node.querySelector(".back-btn");
+
+        backBtn.addEventListener("click", () => {
+            //const blocks = Array.from(document.querySelectorAll(".block"));
+            //inspector.showModelList(blocks);
+        });
+
+        this.container.appendChild(node);
+
 
         if (!blocks || blocks.length === 0) {
             const empty = document.createElement("p");
@@ -139,10 +151,10 @@ const inspector = {
         const offsetY = blockRect.top - canvasRect.top;
 
         if (offsetX < workspace.scrollLeft || offsetX > workspace.scrollLeft + workspace.clientWidth) {
-            workspace.scrollLeft = offsetX - workspace.clientWidth/2 + blockRect.width/2;
+            workspace.scrollLeft = offsetX - workspace.clientWidth / 2 + blockRect.width / 2;
         }
         if (offsetY < workspace.scrollTop || offsetY > workspace.scrollTop + workspace.clientHeight) {
-            workspace.scrollTop = offsetY - workspace.clientHeight/2 + blockRect.height/2;
+            workspace.scrollTop = offsetY - workspace.clientHeight / 2 + blockRect.height / 2;
         }
     }
 };

@@ -71,16 +71,31 @@
     <div id="splitter"></div>
 
     <div id="inspector">
-        <h3>Инспектор</h3>
-        <p>Выберите объект…</p>
-        <p>X1: <span id="x1"></span></p>
-        <p>Y1: <span id="y1"></span></p>
-        <p>X2: <span id="x2"></span></p>
-        <p>Y2: <span id="y2"></span></p>
-        <p>X3: <span id="x3"></span></p>
-        <p>Y3: <span id="y3"></span></p>
+
     </div>
 </div>
+
+<!-- шаблон заголовка для инспектора -->
+<template id="inspector-title-template">
+    <div class="inspector-title model-list">
+        <div class="left">
+            <button class="back-btn" title="Вернуться к списку">←</button>
+            <span class="title-text">Модель</span>
+        </div>
+        <span class="subtitle">properties</span>
+    </div>
+</template>
+
+<template id="inspector-model-list">
+    <div class="inspector-title property">
+        <div class="left">
+            <button class="back-btn" title="Вернуться">←</button>
+            <span class="title-text">Список обьектов</span>
+        </div>
+        <span class="subtitle">list</span>
+    </div>
+</template>
+
 
 <script src="js/variables.js"></script>
 <script src="js/model-name.js"></script>

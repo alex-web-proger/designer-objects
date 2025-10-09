@@ -2,5 +2,6 @@
 loadDraft();
 applyGridSettings();
 
-//  ----------- Инициализация стека истории  ----------------------
-initHistoryWithState(serializeState());
+inspector.showModelList();
+
+updateAllConnections();

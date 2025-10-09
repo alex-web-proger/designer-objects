@@ -50,6 +50,7 @@ function finishEditing(input) {
     let header = newTitle.parentElement;
     header.ondblclick = () => enableEditing(newTitle);
     saveState();
+    inspector.showModelList();
 }
 
 // вспомогательная функция для генерации UUID

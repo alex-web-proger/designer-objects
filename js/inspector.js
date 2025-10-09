@@ -61,6 +61,9 @@ const inspector = {
                 item.style.justifyContent = "space-between";
                 item.style.padding = "2px 5px";
                 item.innerHTML = `<span>${name}</span><span>${type}</span>`;
+                item.style.cursor = "pointer";
+                item.addEventListener("mouseenter", () => item.style.background = "#f0f0f0");
+                item.addEventListener("mouseleave", () => item.style.background = "transparent");
                 ul.appendChild(item);
             });
 
@@ -73,19 +76,14 @@ const inspector = {
         }
     },
 
-    showModelList(blocks) {
+    showModelList() {
+        const blocks = Array.from(canvasEl.querySelectorAll(".block"));
+
         this.clear();
 
         // === новый заголовок через шаблон ===
         const template = document.getElementById("inspector-model-list");
         const node = template.content.cloneNode(true);
-
-        const backBtn = node.querySelector(".back-btn");
-
-        backBtn.addEventListener("click", () => {
-            //const blocks = Array.from(document.querySelectorAll(".block"));
-            //inspector.showModelList(blocks);
-        });
 
         this.container.appendChild(node);
 
@@ -160,8 +158,6 @@ const inspector = {
 };
 
 const canvasEl = document.getElementById("canvas");
-const connectionsEl = document.getElementById("connections");
-
 canvasEl.addEventListener("click", (e) => {
     const target = e.target;
 
@@ -177,6 +173,5 @@ canvasEl.addEventListener("click", (e) => {
     }
 
     // Клик по пустому фону канвы
-    const blocks = Array.from(canvasEl.querySelectorAll(".block"));
-    inspector.showModelList(blocks);
+    inspector.showModelList();
 });

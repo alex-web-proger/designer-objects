@@ -6,6 +6,8 @@
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
           integrity="sha512-..." crossorigin="anonymous" referrerpolicy="no-referrer"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
+          integrity="sha512-..." crossorigin="anonymous" referrerpolicy="no-referrer"/>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -27,9 +29,9 @@
     <div class="group">
         <button title="Undo" id="undo" class="disabled"><i class="fas fa-undo"></i></button>
         <button title="Redo" id="redo" class="disabled"><i class="fas fa-redo"></i></button>
-        <button title="Увеличить масштаб" id="zoomIn"><i class="fas fa-magnifying-glass-plus"></i></button>
-        <button title="Уменьшить масштаб" id="zoomOut"><i class="fas fa-magnifying-glass-minus"></i></button>
-        <button title="Сброс масштаба" id="zoomReset" class="disabled"><i class="fas fa-magnifying-glass"></i></button>
+        <button title="Увеличить масштаб" id="zoomIn"><i class="fa fa-search-plus" aria-hidden="true"></i></button>
+        <button title="Уменьшить масштаб" id="zoomOut"><i class="fa fa-search-minus" aria-hidden="true"></i></button>
+        <button title="Сброс масштаба" id="zoomReset" class="disabled"><i class="fa fa-search" aria-hidden="true"></i></button>
     </div>
 
     <div class="separator"></div>
@@ -89,7 +91,7 @@
 <template id="inspector-model-list">
     <div class="inspector-title property">
         <div class="left">
-            <button class="back-btn" title="Вернуться">←</button>
+<!--            <button class="back-btn" title="Вернуться">←</button>-->
             <span class="title-text">Список обьектов</span>
         </div>
         <span class="subtitle">list</span>
@@ -143,7 +145,9 @@
         block.querySelector(".delete-block").onclick = () => {
             if (confirm("Удалить обьект?")) {
                 block.remove();
+                updateAllConnections();
                 saveState();
+                inspector.showModelList();
             }
         };
 
@@ -171,6 +175,8 @@
         [...block.querySelectorAll("li")].forEach(attachFieldEvents);
 
         adjustCanvasSize();
+
+        inspector.showModelList();
     }
 
     //*******************************************************
@@ -341,8 +347,6 @@
 
     // ------------------- Обновление линии -------------------
     function updateConnection(rel) {
-        const from = rel.from;
-        const to = rel.to;
         const svg = document.getElementById('connections');
         const canvas = document.getElementById('canvas');
 
@@ -403,7 +407,16 @@
 
 
     function updateAllConnections() {
-        connections.forEach(updateConnection);
+        connections.forEach((el) => {
+            let toId = el.to.dataset.blockId;
+            let fromId = el.from.dataset.blockId;
+            if (document.querySelector(`[data-block-id="${fromId}"]`) && document.querySelector(`[data-block-id="${toId}"]`)) {
+                updateConnection(el);
+            }else{
+                el.path.remove();
+                el.hitPath.remove();
+            }
+        });
     }
 
     function saveConnections() {

@@ -23,7 +23,7 @@ function getUniqueDefaultName(base = "Model") {
 }
 
 // ------------------- Редактирование заголовка -------------------
-function enableEditing(titleEl) {
+function enableEditing(titleEl, block) {
     const currentText = titleEl.innerText;
     const input = document.createElement("input");
     input.type = "text";
@@ -31,13 +31,13 @@ function enableEditing(titleEl) {
     input.className = "title-input";
     titleEl.replaceWith(input);
     input.focus();
-    input.addEventListener("blur", () => finishEditing(input));
+    input.addEventListener("blur", () => finishEditing(input, block));
     input.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") finishEditing(input);
+        if (e.key === "Enter") finishEditing(input, block);
     });
 }
 
-function finishEditing(input) {
+function finishEditing(input, block) {
     let newName = toModelName(input.value);
     let suffix = 1, baseName = newName;
     while (!isUniqueName(newName, input)) {
@@ -50,6 +50,7 @@ function finishEditing(input) {
     let header = newTitle.parentElement;
     header.ondblclick = () => enableEditing(newTitle);
     saveState();
+    block.title = newName;
     inspector.showModelList();
 }
 

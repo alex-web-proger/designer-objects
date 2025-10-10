@@ -2,6 +2,7 @@ const inspector = {
 
     container: document.getElementById("inspector"),
     selectedBlock: null, // для подсветки
+    selectedItem: null,
 
     clear() {
         this.container.replaceChildren();
@@ -62,6 +63,7 @@ const inspector = {
                 item.style.padding = "2px 5px";
                 item.innerHTML = `<span>${name}</span><span>${type}</span>`;
                 item.style.cursor = "pointer";
+                item.classList.add('no-select');
                 item.addEventListener("mouseenter", () => item.style.background = "#f0f0f0");
                 item.addEventListener("mouseleave", () => item.style.background = "transparent");
                 ul.appendChild(item);
@@ -77,7 +79,7 @@ const inspector = {
     },
 
     showModelList() {
-        const blocks = Array.from(canvasEl.querySelectorAll(".block"));
+        let blocks = Array.from(canvasEl.querySelectorAll(".block"));
 
         this.clear();
 
@@ -100,12 +102,18 @@ const inspector = {
         list.style.listStyle = "none";
         list.style.padding = 0;
         list.style.margin = 0;
+        list.classList.add('model-list');
+
+         blocks = [...blocks].sort((a, b) =>
+            a.title.localeCompare(b.title, 'en', { sensitivity: 'base' })
+        );
 
         blocks.forEach(block => {
             const li = document.createElement("li");
             li.textContent = block.querySelector(".title")?.innerText || "Без имени";
             li.style.padding = "5px 8px";
             li.style.cursor = "pointer";
+            li.classList.add('no-select');
 
             let clickTimeout;
 
@@ -115,6 +123,13 @@ const inspector = {
                     // одиночный клик — подсветка и скролл
                     this.highlightBlock(block);
                 }, 250);
+                // Снимаем выделение с предыдущего
+                if (this.selectedItem && this.selectedItem !== li) {
+                    this.selectedItem.classList.remove('selected');
+                    this.selectedItem.style.background = "transparent";
+                }
+                li.classList.add('selected');
+                this.selectedItem = li;
             });
 
             li.addEventListener("dblclick", () => {
@@ -123,8 +138,12 @@ const inspector = {
                 this.showProperties(block);
             });
 
-            li.addEventListener("mouseenter", () => li.style.background = "#f0f0f0");
-            li.addEventListener("mouseleave", () => li.style.background = "transparent");
+            li.addEventListener("mouseenter", () => {
+                if(this.selectedItem != li) li.style.background = "#f0f0f0";
+            });
+            li.addEventListener("mouseleave", () => {
+                if(this.selectedItem != li) li.style.background = "transparent";
+            });
             list.appendChild(li);
         });
 
@@ -158,6 +177,7 @@ const inspector = {
 };
 
 const canvasEl = document.getElementById("canvas");
+
 canvasEl.addEventListener("click", (e) => {
     const target = e.target;
 

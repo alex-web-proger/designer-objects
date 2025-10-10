@@ -91,7 +91,6 @@
 <template id="inspector-model-list">
     <div class="inspector-title property">
         <div class="left">
-<!--            <button class="back-btn" title="Вернуться">←</button>-->
             <span class="title-text">Список обьектов</span>
         </div>
         <span class="subtitle">list</span>
@@ -118,10 +117,11 @@
         block.dataset.id = data?.id || generateUUID();
 
         const uniqueName = getUniqueDefaultName("Model");
+        const name = data?.title || uniqueName;
 
         block.innerHTML = `
       <div class="block-header">
-        <span class="title">${data?.title || uniqueName}</span>
+        <span class="title">${name}</span>
         <span class="delete-block">×</span>
       </div>
       <ul class="fields">
@@ -137,6 +137,7 @@
 
         block.x = block.offsetLeft;
         block.y = block.offsetTop;
+        block.title = name;
 
         let title = block.querySelector(".title");
 
@@ -159,7 +160,7 @@
         //     saveState();
         // };
         //
-        title.parentElement.ondblclick = () => enableEditing(title);
+        title.parentElement.ondblclick = () => enableEditing(title, block);
 
         // ------------------- Перетаскивание блока -------------------
         let header = block.querySelector(".block-header");
@@ -323,6 +324,7 @@
                 const idx = connections.findIndex(c => c.path === path);
                 if (idx !== -1) {
                     connections[idx].path.remove();         // убрать из DOM
+                    connections[idx].hitPath.remove();
                     connections.splice(idx, 1);  // убрать из массива
                     saveConnections();                      // обновить хранилище
                 }

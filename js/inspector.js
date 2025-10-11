@@ -14,10 +14,26 @@ const inspector = {
     },
 
     show(block) {
+
         if (!block) return;
 
-        // подсветка блока и скролл к нему
+        // подсветка блока на рабочем поле и скролл к нему
         this.highlightBlock(block);
+
+        // убрать выделение модели в инспекторе
+        let select = document.querySelector('.model-list .selected');
+        if(select) {
+            select.classList.remove('selected');
+            select.style.background = "transparent";
+        }
+
+        const id = block.dataset.id;
+        let li = document.querySelector(`.model-list [data-id="${id}"]`);
+        if (li) {
+            li.classList.add('selected');
+            li.style.background = '#f0f0f0';
+            this.selectedItem = li;
+        }
     },
 
     showProperties(block) {
@@ -104,8 +120,8 @@ const inspector = {
         list.style.margin = 0;
         list.classList.add('model-list');
 
-         blocks = [...blocks].sort((a, b) =>
-            a.title.localeCompare(b.title, 'en', { sensitivity: 'base' })
+        blocks = [...blocks].sort((a, b) =>
+            a.title.localeCompare(b.title, 'en', {sensitivity: 'base'})
         );
 
         blocks.forEach(block => {
@@ -114,10 +130,12 @@ const inspector = {
             li.style.padding = "5px 8px";
             li.style.cursor = "pointer";
             li.classList.add('no-select');
+            li.dataset.id = block.dataset.id;
 
             let clickTimeout;
 
             li.addEventListener("click", () => {
+
                 clearTimeout(clickTimeout);
                 clickTimeout = setTimeout(() => {
                     // одиночный клик — подсветка и скролл
@@ -139,10 +157,10 @@ const inspector = {
             });
 
             li.addEventListener("mouseenter", () => {
-                if(this.selectedItem != li) li.style.background = "#f0f0f0";
+                if (this.selectedItem != li) li.style.background = "#f0f0f0";
             });
             li.addEventListener("mouseleave", () => {
-                if(this.selectedItem != li) li.style.background = "transparent";
+                if (this.selectedItem != li) li.style.background = "transparent";
             });
             list.appendChild(li);
         });

@@ -79,8 +79,8 @@ body {
     color: orange !important;
 }
 
-#deleteProject i {
-    color: tomato !important;
+#deleteProject i, #removeObject i {
+    color: red !important;
 }
 
 button.disabled i {

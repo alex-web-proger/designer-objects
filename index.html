@@ -185,13 +185,13 @@
     //                   Перетаскивание                    //
     //*******************************************************
     function startDragging(block, e) {
-
+        let isChange = false;
         let startX = e.clientX;
         let startY = e.clientY;
 
         // Вызывается при перемещении блока
         function onMouseMove(ev) {
-
+            isChange = true;
             const dx = ev.clientX - startX;
             const dy = ev.clientY - startY;
 
@@ -234,7 +234,11 @@
         document.onmouseup = () => {
             document.removeEventListener("mousemove", onMouseMove);
             document.onmouseup = null;
-            saveState();
+            //saveState();
+            if(isChange) {
+                saveDraft();
+                isChange = false;
+            }
         };
     }
 

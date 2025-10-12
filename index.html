@@ -330,8 +330,9 @@
                 if (idx !== -1) {
                     connections[idx].path.remove();         // убрать из DOM
                     connections[idx].hitPath.remove();
-                    connections.splice(idx, 1);  // убрать из массива
+                    connections.splice(idx, 1);             // убрать из массива
                     saveConnections();                      // обновить хранилище
+                   // saveDraft();
                 }
             }
         });

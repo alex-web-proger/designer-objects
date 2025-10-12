@@ -54,6 +54,7 @@ function updateUndoRedoButtons() {
     } else {
         redoBtn.classList.add("disabled");
     }
+    saveDraft();
 }
 
 function initHistoryWithState(state) {

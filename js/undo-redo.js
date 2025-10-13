@@ -30,6 +30,7 @@ function undo() {
     historyPointer--;
     loadState(JSON.parse(history[historyPointer]));
     updateUndoRedoButtons();
+    //saveDraft();
 }
 
 function redo() {
@@ -37,6 +38,7 @@ function redo() {
     historyPointer++;
     loadState(JSON.parse(history[historyPointer]));
     updateUndoRedoButtons();
+    //saveDraft();
 }
 
 function updateUndoRedoButtons() {
@@ -54,7 +56,6 @@ function updateUndoRedoButtons() {
     } else {
         redoBtn.classList.add("disabled");
     }
-    saveDraft();
 }
 
 function initHistoryWithState(state) {

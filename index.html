@@ -441,6 +441,7 @@
     function serializeState() {
 
         const blocks = Array.from(document.querySelectorAll(".block")).map(block => {
+
             const fields = Array.from(block.querySelectorAll(".fields li")).map(li => {
                 const name = li.querySelector("span:nth-child(1)").innerText;
                 const type = li.querySelector("span:nth-child(2)").innerText;

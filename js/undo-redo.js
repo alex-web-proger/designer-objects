@@ -25,20 +25,25 @@ function canRedo() {
     return historyPointer < history.length - 1;
 }
 
-function undo() {
-    if (!canUndo()) return;
-    historyPointer--;
-    loadState(JSON.parse(history[historyPointer]));
+function restore(){
+    let data = history[historyPointer];
+    loadState(JSON.parse(data));
     updateUndoRedoButtons();
-    //saveDraft();
+    localStorage.setItem("draftState", data);
+}
+
+function undo() {
+    if (canUndo()) {
+        historyPointer--;
+        restore();
+    }
 }
 
 function redo() {
-    if (!canRedo()) return;
-    historyPointer++;
-    loadState(JSON.parse(history[historyPointer]));
-    updateUndoRedoButtons();
-    //saveDraft();
+    if (canRedo()) {
+        historyPointer++;
+        restore();
+    }
 }
 
 function updateUndoRedoButtons() {

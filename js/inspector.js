@@ -199,6 +199,11 @@ const canvasEl = document.getElementById("canvas");
 canvasEl.addEventListener("click", (e) => {
     const target = e.target;
 
+    if (target.closest(".fields")) {
+
+        //return;
+    }
+
     // Клик на блок → игнорируем
     if (target.closest(".block")) {
         inspector.show(target.closest(".block"))

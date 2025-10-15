@@ -201,8 +201,10 @@ canvasEl.addEventListener("click", (e) => {
 
     if (target.closest(".fields")) {
 
-        //return;
+        return;
     }
+
+    hideBtnAddConnection();
 
     // Клик на блок → игнорируем
     if (target.closest(".block")) {

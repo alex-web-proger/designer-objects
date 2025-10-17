@@ -234,8 +234,8 @@ path {
     pointer-events: none;
 }
 .grid-visible {
-    background-image: linear-gradient(to right, #ddd 1px, transparent 1px),
-    linear-gradient(to bottom, #ddd 1px, transparent 1px);
+    background-image: linear-gradient(to right, #dddddd 1px, transparent 1px),
+    linear-gradient(to bottom, #dddddd 1px, transparent 1px);
     background-size: 20px 20px;
 }
 
